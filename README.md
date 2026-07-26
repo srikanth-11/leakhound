@@ -31,10 +31,11 @@ Red rows are dead weight, green rows earn their keep. Output looks like this in 
 /plugin install leakhound@leakhound
 ```
 
-Optional companion, only if you want the automatic per-prompt router (it registers a hook):
+Optional companions, each registering hooks only if you install them:
 
 ```
-/plugin install leakhound-router@leakhound
+/plugin install leakhound-router@leakhound   # per-prompt model routing
+/plugin install leakhound-guard@leakhound    # waste firewall (blocks waste before it costs)
 ```
 
 Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every selftest on all three.
@@ -254,6 +255,21 @@ Tune classification with your own regex patterns (JSON needs double backslashes;
 Current context size (green, yellow, or red by pressure — red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
 
 **Usage:** `/leakhound:live` walks you through it: copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet — you approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json`: `"live": {"yellow": 500000, "red": 800000}`.
+
+### Command: `/leakhound-guard:guard [on|off|status]`
+
+**What it does:** the waste firewall, a separate opt-in plugin. Where `/waste` reports leaks after the fact, the guard referees Read calls before they cost anything:
+
+- **artifacts** — a whole-file read of a lockfile or build artifact over ~20k est tokens is denied with a redirect: *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
+- **rereads** — a full re-read of a file unchanged since it was already read this session is denied: reference the earlier read instead. A changed file always passes (mtime-checked).
+
+Escape hatches are built in, no hard loops possible: offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten — reads are only refereed, and every denial explains the cheaper alternative.
+
+**Usage:** installed = on. `/leakhound-guard:guard status`, `off`, or per-rule: `artifacts off`, `rereads off`. State lives in `~/.claude/leakhound.json` under `guard`.
+
+```
+🛡 Guard ON · artifacts ✅ · rereads ✅
+```
 
 ## Configuration
 

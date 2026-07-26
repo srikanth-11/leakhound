@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.0] — 2026-07-26
+
+### Added
+
+- leakhound-guard, a third opt-in plugin: waste firewall on the Read tool. Denies whole-file reads of lockfiles/build artifacts (>~20k est tokens) with a Grep redirect, and full re-reads of files unchanged since already read this session (mtime-checked). Offset/limit reads always pass; a third identical attempt always passes (circuit breaker — no hard loops). `/leakhound-guard:guard` for status and per-rule toggles
+
 ## [0.7.0] — 2026-07-26
 
 ### Added

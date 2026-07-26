@@ -15,6 +15,12 @@
       "source": "./router",
       "description": "Opt-in companion: per-prompt hook that routes mechanical/search work to haiku subagents, weighted by your cost vs quality preference.",
       "category": "productivity"
+    },
+    {
+      "name": "leakhound-guard",
+      "source": "./guard",
+      "description": "Opt-in waste firewall: denies whole-file lockfile/artifact reads and unchanged re-reads before they cost tokens. Escape hatches built in; nothing is ever rewritten.",
+      "category": "productivity"
     }
   ]
 }
