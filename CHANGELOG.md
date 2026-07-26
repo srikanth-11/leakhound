@@ -9,7 +9,6 @@ All notable changes to this project are documented here.
 - Compaction detection in /waste: context drops >30% and >20k tokens are counted, and post-compaction re-reads of pre-compaction files become a `compaction-waste` finding
 - Context-pressure signal: warns when recent input averages >50k tokens (compaction incoming)
 - Personal baselines: with 5+ sessions of history, /waste all compares the latest session to your 30-day median, and /model-audit reports mechanical share vs your typical session
-- "How it compares" README section (source-verified against Argus, claude-token-analyzer, Token Optimizer)
 
 ## [0.4.3] — 2026-07-26
 
