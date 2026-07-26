@@ -23,6 +23,13 @@ Follow the steps in order. Stop and report at the first failure.
 3. **Changelog.** Add a `## [<version>] — <today>` entry to `CHANGELOG.md`
    summarizing the actual commits since the previous release. No invented
    features; check `git log` if unsure.
+3b. **README examples.** For every behavior change in this release, verify
+   the README's worked examples show it: new JSON fields appear in the
+   example output blocks, new finding categories appear in the example runs
+   and their "What you'd do" lists, new chips/lines are demonstrated. The
+   examples are the product demo — a demo that lags the product undersells
+   it. Example data stays fictional and internally consistent (recompute
+   totals when adding rows).
 4. **Selftests.** All six must print `selftest OK`:
    `node scripts/waste.js --selftest`, `mcp-audit.js`, `model-audit.js`,
    `plugin-audit.js`, `trend.js`, and `node router/scripts/router-hook.js
