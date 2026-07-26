@@ -1,7 +1,7 @@
 {
   "name": "leakhound-guard",
   "description": "Leakhound's opt-in waste firewall: blocks whole-file reads of lockfiles/build artifacts and repeat full reads of unchanged files, before they cost tokens. Every denial names the escape hatch (offset/limit passes; a third identical attempt passes). Companion to the leakhound plugin — install only if you want active prevention; it registers Read-tool hooks.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": {
     "name": "srikanth-11",
     "url": "https://github.com/srikanth-11"

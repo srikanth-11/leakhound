@@ -1,5 +1,6 @@
 ---
 description: Find where this project's Claude Code tokens went — top waste sources with fixes
+argument-hint: [all]
 ---
 
 Analyze token waste for the current project.

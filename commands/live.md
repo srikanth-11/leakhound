@@ -1,5 +1,6 @@
 ---
 description: Set up the live leakhound statusline — real-time context meter and burn in your terminal
+argument-hint: [off]
 ---
 
 Set up (or remove) the leakhound live statusline.

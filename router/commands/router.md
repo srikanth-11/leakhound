@@ -1,5 +1,6 @@
 ---
 description: Toggle leakhound's per-prompt model router (on|off|status)
+argument-hint: [on|off|status]
 ---
 
 Manage the leakhound router.

@@ -12,7 +12,7 @@ Usage trackers tell you how much you spent; a snapshot shows how full the contex
 
 Leakhound answers all three, locally, with zero dependencies. The audits themselves are plain scripts, not model calls, so running leakhound costs roughly nothing. And diagnosis is only the start: an optional live meter watches your context in the statusline, an optional router sends mechanical work to cheaper models, and an optional guard blocks wasteful reads before they cost a single token. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
 
-🟢 5 keep · 🔴 3 disable candidates
+🟢 2 keep · 🔴 3 disable candidates
 
 ```diff
 - vercel        ░░░░░░░░░░░░░░░░░░░░    0  never
@@ -67,8 +67,8 @@ Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k t
 
 ```diff
 - compaction-waste ████████████████████  41,200   context compacted 2x; 5 pre-compaction file read(s) repeated after
-- file-reread      ██████████████████░░  38,400   src/api/routes.ts read 6 times
-- giant-read       ██████████████░░░░░░  30,100   package-lock.json returned ~30k tokens
+- file-reread      ███████████████████░  38,400   src/api/routes.ts read 6 times
+- giant-read       ███████████████░░░░░  30,100   package-lock.json returned ~30k tokens
 - retry-loop       ██████░░░░░░░░░░░░░░  12,700   Bash failed 5x in a row
 - verbose-output   █████░░░░░░░░░░░░░░░  10,900   Bash output ~10.9k tokens
 ```
@@ -113,8 +113,8 @@ The baseline line stays your sanity check: 2.4x your own median means this sessi
 - postgres      ░░░░░░░░░░░░░░░░░░░░    0  never
 - sentry        ░░░░░░░░░░░░░░░░░░░░    0  never
 - browserstack  ░░░░░░░░░░░░░░░░░░░░    0  never
-+ linear        ██░░░░░░░░░░░░░░░░░░   14  2026-07-20
-+ slack         █████████░░░░░░░░░░░   89  2026-07-24
++ linear        █░░░░░░░░░░░░░░░░░░░   14  2026-07-20
++ slack         ████████░░░░░░░░░░░░   89  2026-07-24
 + github        ████████████████████  212  2026-07-25
 ```
 
@@ -139,7 +139,7 @@ The baseline line stays your sanity check: 2.4x your own median means this sessi
 - docs-toolkit      ░░░░░░░░░░░░░░░░░░░░    0  ~950 tok
 - theme-pack        ░░░░░░░░░░░░░░░░░░░░    0  ~310 tok
   session-guard     ░░░░░░░░░░░░░░░░░░░░    0  ~25 tok  (hook-only)
-+ code-review       ███░░░░░░░░░░░░░░░░░   37  ~480 tok
++ code-review       ████░░░░░░░░░░░░░░░░   37  ~480 tok
 + commit-helpers    ████████████████████  203  ~60 tok
 ```
 
@@ -203,12 +203,21 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 **Example run.** Two weeks after acting on the audits above:
 
+**plugin-audit** (6 runs)
 ```diff
-+ disable              █▅▅▁▁     latest 0        (-3 vs previous)
-+ reclaimableTokens    █▅▅▁▁     latest 0        (-1,260 vs previous)
++ disable            █▅▅▁▁     latest 0        (-3 vs previous)
++ reclaimableTokens  █▅▅▁▁     latest 0        (-1,260 vs previous)
+```
+
+**model-audit** (7 runs)
+```diff
 + mechanicalMsgs       ███▅▃▂    latest 210      (-95 vs previous)
 + reallocatableTokens  ███▅▃▂    latest 118,000  (-64,000 vs previous)
-  totalCalls           ▃▄▄▅▅     latest 402      (+23 vs previous)
+```
+
+**mcp-audit** (6 runs)
+```diff
+  totalCalls  ▃▄▄▅▅     latest 402      (+23 vs previous)
 ```
 
 🟢 trending leaner
@@ -308,7 +317,7 @@ Every screen uses the same small vocabulary. Once you can read one, you can read
 
 ## Configuration
 
-All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`):
+Settings live in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`):
 
 | Key | Values | Default | Used by |
 |---|---|---|---|
@@ -319,13 +328,15 @@ All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/
 | `live` | `{yellow, red}` context thresholds in tokens | 500k / 800k | statusline badge colors |
 | `guard` | `"off"` or `{artifacts, rereads}` booleans | on when installed | waste firewall rules |
 
+Two other local files exist: `~/.claude/leakhound-history.jsonl` (the audit summaries /trend reads) and, when the guard is installed, per-session read memory under `~/.claude/.leakhound-guard/` (auto-pruned after a day).
+
 ## Privacy
 
 Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it: the whole thing is eight small plain-Node scripts, read them.
 
 ## How it works
 
-Eight zero-dependency Node scripts across three plugins. Five audits parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. The statusline script tails the live transcript for the meter. The router and guard hooks referee prompts and Read calls. Command markdown renders the JSON. You can run any of them directly:
+Eight zero-dependency Node scripts across three plugins. Four audits parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs; trend reads the history file the audits append to. The statusline script tails the live transcript for the meter. The router and guard hooks referee prompts and Read calls. Command markdown renders the JSON. You can run any of them directly:
 
 ```
 node scripts/waste.js --project-dir /path/to/project

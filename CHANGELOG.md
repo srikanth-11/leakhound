@@ -2,16 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.1] — 2026-07-26
+
+Main plugin and leakhound-guard both move to 0.8.1; leakhound-router stays 0.3.3. The changelog tracks the main plugin, with companion versions named inline.
+
+### Fixed
+
+- mcp-audit invocation counting is now structural (parsed tool_use blocks), closing the raw-string matching gap plugin-audit had already fixed — poisoned tool output can no longer inflate MCP usage counts
+- Guard re-read denials trip once per file instead of twice: subagents share the parent session id and could be denied a first read of a file only the parent had seen (leakhound-guard 0.8.1)
+- README example bars recomputed to the documented formula; hero chips match the rows shown; trend example uses the real per-tool block shape; state-file documentation now covers the history file and guard memory
+- Release/skill/agent docs cover all three plugins and all eight selftests; argument-hint added to argument-taking commands; marketplace entries gained schema and homepage fields
+
 ## [0.8.0] — 2026-07-26
-
-### Changed
-
-- Router status matrix spells out non-routed classes in words ("complex stays on session model") instead of a bare dash glyph (leakhound-router 0.3.3)
-
 
 ### Added
 
 - leakhound-guard, a third opt-in plugin: waste firewall on the Read tool. Denies whole-file reads of lockfiles/build artifacts (>~20k est tokens) with a Grep redirect, and full re-reads of files unchanged since already read this session (mtime-checked). Offset/limit reads always pass; a third identical attempt always passes (circuit breaker — no hard loops). `/leakhound-guard:guard` for status and per-rule toggles
+
+### Changed
+
+- Router status matrix spells out non-routed classes in words ("complex stays on session model") instead of a bare dash glyph (leakhound-router 0.3.3)
 
 ## [0.7.3] — 2026-07-26
 

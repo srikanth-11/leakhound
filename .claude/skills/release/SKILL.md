@@ -16,8 +16,8 @@ Follow the steps in order. Stop and report at the first failure.
    the current branch must be `main`. `git log origin/main..HEAD` shows what
    ships.
 2. **Bump versions.** Set `.claude-plugin/plugin.json` `version` to the
-   argument. If any `router/` file changed since the last release, bump
-   `router/.claude-plugin/plugin.json` too (patch bump unless told otherwise).
+   argument. If any `router/` or `guard/` file changed since the last release, bump that companion's
+   manifest too (`router/.claude-plugin/plugin.json` / `guard/.claude-plugin/plugin.json`, patch bump unless told otherwise), and name the companion version in the changelog entry.
    Same-version releases are silent no-ops for installers — the cache only
    refreshes on a version change. Never skip the bump.
 3. **Changelog.** Add a `## [<version>] — <today>` entry to `CHANGELOG.md`
@@ -30,10 +30,11 @@ Follow the steps in order. Stop and report at the first failure.
    examples are the product demo — a demo that lags the product undersells
    it. Example data stays fictional and internally consistent (recompute
    totals when adding rows).
-4. **Selftests.** All six must print `selftest OK`:
+4. **Selftests.** All eight must print `selftest OK`:
    `node scripts/waste.js --selftest`, `mcp-audit.js`, `model-audit.js`,
-   `plugin-audit.js`, `trend.js`, and `node router/scripts/router-hook.js
-   --selftest`.
+   `plugin-audit.js`, `trend.js`, `statusline.js`,
+   `node router/scripts/router-hook.js --selftest`, and
+   `node guard/scripts/guard-hook.js --selftest`.
 5. **Commit and push.** Conventional message, no AI trailers. `git push` on
    `main`.
 6. **Sync master.** `master` keeps the full dev history plus internal docs
@@ -44,7 +45,7 @@ Follow the steps in order. Stop and report at the first failure.
 8. **Refresh local install.**
    `claude plugin marketplace update leakhound`, then
    `claude plugin update leakhound@leakhound` (and
-   `leakhound-router@leakhound` if it was bumped). Verify the reported
+   `leakhound-router@leakhound` / `leakhound-guard@leakhound` if bumped). Verify the reported
    version matches the argument.
 9. **Report.** Version, commit hash, CI run result, install status. Remind:
    restart the session to load the new build.

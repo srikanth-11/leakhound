@@ -96,9 +96,9 @@ function selftest() {
 
   // Test buildTrend with fixture
   const fixtureLines = [
-    JSON.stringify({ ts: '2026-07-25T10:00:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, calls30d: 20 } }),
-    JSON.stringify({ ts: '2026-07-25T10:05:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, calls30d: 22 } }),
-    JSON.stringify({ ts: '2026-07-25T10:10:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, calls30d: 25 } }),
+    JSON.stringify({ ts: '2026-07-25T10:00:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, totalCalls: 20 } }),
+    JSON.stringify({ ts: '2026-07-25T10:05:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, totalCalls: 22 } }),
+    JSON.stringify({ ts: '2026-07-25T10:10:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, totalCalls: 25 } }),
     JSON.stringify({ ts: '2026-07-25T10:15:00Z', tool: 'plugin-audit', summary: { plugins: 8, disable: 2, reclaimableTokens: 5000 } }),
     'not valid json',
     ''
@@ -112,21 +112,21 @@ function selftest() {
   // plugin-audit should have 1 run
   assert.equal(tools['plugin-audit'].runs, 1, 'plugin-audit has 1 run');
 
-  // mcp-audit latest calls30d should be 25
-  assert.equal(tools['mcp-audit'].latest.summary.calls30d, 25, 'mcp-audit latest calls30d is 25');
+  // mcp-audit latest totalCalls should be 25
+  assert.equal(tools['mcp-audit'].latest.summary.totalCalls, 25, 'mcp-audit latest totalCalls is 25');
 
-  // mcp-audit previous calls30d should be 22
-  assert.equal(tools['mcp-audit'].previous.summary.calls30d, 22, 'mcp-audit previous calls30d is 22');
+  // mcp-audit previous totalCalls should be 22
+  assert.equal(tools['mcp-audit'].previous.summary.totalCalls, 22, 'mcp-audit previous totalCalls is 22');
 
   // mcp-audit delta should be 25-22 = 3
-  assert.equal(tools['mcp-audit'].deltas.calls30d, 3, 'mcp-audit delta is 3');
+  assert.equal(tools['mcp-audit'].deltas.totalCalls, 3, 'mcp-audit delta is 3');
 
   // plugin-audit should have null deltas (only 1 run)
   assert.equal(tools['plugin-audit'].deltas, null, 'plugin-audit deltas is null');
 
   // Check sparklines exist
-  assert(tools['mcp-audit'].spark.calls30d, 'mcp-audit has calls30d sparkline');
-  assert.equal(tools['mcp-audit'].spark.calls30d.length, 3, 'mcp-audit sparkline has 3 chars (3 runs)');
+  assert(tools['mcp-audit'].spark.totalCalls, 'mcp-audit has totalCalls sparkline');
+  assert.equal(tools['mcp-audit'].spark.totalCalls.length, 3, 'mcp-audit sparkline has 3 chars (3 runs)');
 
   console.log('selftest OK');
 }

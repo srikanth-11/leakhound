@@ -2,7 +2,7 @@
 /* leakhound guard-hook.js — waste firewall. PreToolUse referee for Read:
    blocks whole-file reads of lockfiles/build artifacts, and repeat full reads
    of files unchanged since they were already read this session. Deny reasons
-   always name the escape hatch (offset/limit passes; third attempt passes).
+   always name the escape hatch (offset/limit passes; a repeat attempt passes).
    HOOK CONTRACT: never crashes, never blocks the session, JSON-only stdout,
    exit 0 always; any uncertainty resolves to ALLOW. Zero deps. */
 'use strict';
@@ -109,8 +109,8 @@ function decide(evt) {
         const m = fs.statSync(fp).mtimeMs;
         if (m === rec.mtime) {
           const d = st.denials[fp] || 0;
-          if (d >= 2) {
-            // circuit breaker: never hard-loop; third attempt passes
+          if (d >= 1) {
+            // circuit breaker at ONE denial per file: subagents share the parent session id and may legitimately need a first read of a file the parent already saw — one nudge, then pass
             delete st.denials[fp];
             saveState(evt.session_id, st);
             return { action: 'allow' };
@@ -120,7 +120,7 @@ function decide(evt) {
           const base = path.basename(fp);
           return {
             action: 'deny',
-            reason: 'leakhound-guard: ' + base + ' was already fully read this session and has not changed. Do NOT retry this exact read — reference the earlier read, or use offset/limit for the section you need. (A third identical attempt will pass.)'
+            reason: 'leakhound-guard: ' + base + ' was already fully read this session and has not changed. Do NOT retry this exact read — reference the earlier read, or use offset/limit for the section you need. (If you genuinely need the full file, repeat the read and it will pass.)'
           };
         }
         // file changed since the read: allow and refresh memory
@@ -175,8 +175,7 @@ function selftest() {
   assert.equal(decide({ hook_event_name: 'PreToolUse', session_id: sid, tool_input: { file_path: src } }).action, 'allow', 'first read passes');
   decide({ hook_event_name: 'PostToolUse', session_id: sid, tool_input: { file_path: src } }); // record it
   assert.equal(decide({ hook_event_name: 'PreToolUse', session_id: sid, tool_input: { file_path: src } }).action, 'deny', 'unchanged re-read denied (1)');
-  assert.equal(decide({ hook_event_name: 'PreToolUse', session_id: sid, tool_input: { file_path: src } }).action, 'deny', 'unchanged re-read denied (2)');
-  assert.equal(decide({ hook_event_name: 'PreToolUse', session_id: sid, tool_input: { file_path: src } }).action, 'allow', 'circuit breaker: third attempt passes');
+  assert.equal(decide({ hook_event_name: 'PreToolUse', session_id: sid, tool_input: { file_path: src } }).action, 'allow', 'circuit breaker: one denial per file, repeat passes (subagent-safe)');
 
   // changed file re-reads freely
   const src2 = path.join(tmp, 'lib.ts');

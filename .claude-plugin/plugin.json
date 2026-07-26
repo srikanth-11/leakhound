@@ -1,7 +1,7 @@
 {
   "name": "leakhound",
-  "description": "Finds where your Claude Code tokens actually go. /waste breaks down a session's token burn, /mcp-audit and /plugin-audit flag MCP servers and plugins you never use, /model-audit shows which model should do which work (with optional $ figures and delegation compliance), /trend tracks it over time, /live puts a real-time context meter in your statusline. Zero hooks, zero per-prompt cost — the automatic router ships separately as leakhound-router.",
-  "version": "0.7.3",
+  "description": "Finds where your Claude Code tokens actually go. /waste breaks down a session's token burn, /mcp-audit and /plugin-audit flag MCP servers and plugins you never use, /model-audit shows which model should do which work (with optional $ figures and delegation compliance), /trend tracks it over time, /live puts a real-time context meter in your statusline. Zero hooks, zero per-prompt cost — the automatic layers ship separately as leakhound-router (per-prompt routing) and leakhound-guard (waste firewall).",
+  "version": "0.8.1",
   "author": {
     "name": "srikanth-11",
     "url": "https://github.com/srikanth-11"

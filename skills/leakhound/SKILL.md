@@ -16,10 +16,13 @@ token waste:
 3. If the question is about model choice or cost-vs-quality, suggest
    `/leakhound:model-audit` (accepts cost | balanced | quality to set their
    preference).
-4. If they want automatic per-prompt handling, suggest installing
-   leakhound-router (`/plugin install leakhound-router@leakhound`) and running
-   `/leakhound-router:router on` — it injects delegation directives on every
-   prompt (weight-aware).
+4. If they want automatic help rather than reports: `/leakhound:live` puts a
+   real-time context meter in the statusline; leakhound-router
+   (`/plugin install leakhound-router@leakhound`, then
+   `/leakhound-router:router on`) routes mechanical prompts to cheaper
+   subagents; leakhound-guard (`/plugin install leakhound-guard@leakhound`)
+   blocks wasteful reads before they cost anything. Each is a separate
+   opt-in install. `/leakhound:trend` shows whether past fixes worked.
 5. Never disable anything or run /model yourself — report and recommend only.
 
 **Stale-audit nudge:** if `<CLAUDE_CONFIG_DIR or ~/.claude>/leakhound-history.jsonl` is missing or its last line's `ts` is older than 30 days, mention that an audit refresh would be worthwhile (once per session, not naggy).

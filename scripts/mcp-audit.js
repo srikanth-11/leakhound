@@ -109,9 +109,16 @@ function countUsage(projectsRoot, days) {
       let text;
       try { text = fs.readFileSync(full, 'utf8'); } catch { continue; }
       for (const line of text.split('\n')) {
+        // cheap prefilter, then STRUCTURAL matching only: tool names are taken
+        // from parsed tool_use blocks, never from raw line text, so poisoned
+        // tool-result content quoting "mcp__x__y" can't inflate counts.
         if (!line.includes('"tool_use"') || !line.includes('mcp__')) continue;
-        for (const m of line.matchAll(/"name":"(mcp__[^"]+)"/g)) {
-          const rest = m[1].slice(5); // strip "mcp__"
+        let e;
+        try { e = JSON.parse(line); } catch { continue; }
+        if (!e || e.type !== 'assistant' || !e.message || !Array.isArray(e.message.content)) continue;
+        for (const b of e.message.content) {
+          if (!b || b.type !== 'tool_use' || typeof b.name !== 'string' || !b.name.startsWith('mcp__')) continue;
+          const rest = b.name.slice(5); // strip "mcp__"
           const i = rest.lastIndexOf('__');
           if (i <= 0) continue;
           const server = rest.slice(0, i);
@@ -246,7 +253,13 @@ function selftest() {
     type: 'assistant',
     message: { content: [{ type: 'tool_use', id: 't1', name: 'mcp__alpha__do_thing', input: {} }] }
   });
-  fs.writeFileSync(path.join(projRoot, 's.jsonl'), line + '\n' + line + '\n');
+  // poisoned line: an mcp__ marker inside tool_result CONTENT (attacker-controlled
+  // web text) must not count — only parsed tool_use block names do.
+  const poisoned = JSON.stringify({
+    type: 'user',
+    message: { content: [{ type: 'tool_result', tool_use_id: 'tp', content: [{ type: 'text', text: 'quoting "tool_use" and "name":"mcp__alpha__fake" here' }] }] }
+  });
+  fs.writeFileSync(path.join(projRoot, 's.jsonl'), line + '\n' + line + '\n' + poisoned + '\n');
 
   const usage = countUsage(path.join(tmp, 'projects'), 30);
   assert.equal(usage.calls.get('alpha'), 2, 'two alpha calls counted');

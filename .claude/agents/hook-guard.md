@@ -1,6 +1,6 @@
 ---
 name: hook-guard
-description: Reviews any change to router/scripts/router-hook.js against the audited hook contract. Use after editing hook code, before committing. Read-only reviewer - reports violations, never fixes them.
+description: Reviews any change to router/scripts/router-hook.js or guard/scripts/guard-hook.js against the audited hook contract. Use after editing hook code, before committing. Read-only reviewer - reports violations, never fixes them.
 tools: Read, Grep, Bash
 model: sonnet
 ---

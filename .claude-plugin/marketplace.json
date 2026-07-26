@@ -8,19 +8,23 @@
       "name": "leakhound",
       "source": "./",
       "description": "Token-waste forensics: /waste, /mcp-audit, /plugin-audit, /model-audit, /trend and the /live statusline meter — causes, verdicts, and exact fixes. No hooks, no per-prompt cost.",
-      "category": "productivity"
+      "category": "productivity",
+      "homepage": "https://github.com/srikanth-11/leakhound"
     },
     {
       "name": "leakhound-router",
       "source": "./router",
       "description": "Opt-in companion: per-prompt hook that routes mechanical/search work to haiku subagents, weighted by your cost vs quality preference.",
-      "category": "productivity"
+      "category": "productivity",
+      "homepage": "https://github.com/srikanth-11/leakhound"
     },
     {
       "name": "leakhound-guard",
       "source": "./guard",
       "description": "Opt-in waste firewall: denies whole-file lockfile/artifact reads and unchanged re-reads before they cost tokens. Escape hatches built in; nothing is ever rewritten.",
-      "category": "productivity"
+      "category": "productivity",
+      "homepage": "https://github.com/srikanth-11/leakhound"
     }
-  ]
+  ],
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json"
 }
