@@ -13,13 +13,14 @@ Analyze token waste for the current project.
 3. Render a report, nothing else:
    - One header line: which transcript files were analyzed, and note if the newest is the live session (still growing).
    - Totals line: `output ~N tokens, cache writes ~N, cache reads ~N` (all estimates).
-   - A table of findings, sorted as given (already worst-first), columns: Category | What happened | Est. tokens | Fix.
-     - Visual bars: for estTokens, render `Math.round(estTokens / max * 20)` `█` characters padded to 20 with `░`, value right-aligned after the bar. Put ALL bar output inside one fenced code block so alignment survives. Example:
+   - Findings visual block (MANDATORY when findings exist — never replace with a plain table): one fenced code block with language `diff`. Every finding is a leak, so every finding row takes a `-` prefix (renders red in most terminals): category, bar, est tokens. Bar = `Math.round(estTokens / max * 20)` `█` chars padded to 20 with `░`. Example:
+       ```diff
+       - cache-churn     ████████████████████  240,000
+       - giant-read      ██░░░░░░░░░░░░░░░░░░   25,000
+       - verbose-output  █░░░░░░░░░░░░░░░░░░░   12,000
        ```
-       cache-reread       ████████████████░░░░  1,702,478
-       shell-output       ███████████████░░░░░  1,300,948
-       ```
-   - If findings is empty: say the session looks clean and list the thresholds (single result > 20k est tokens, 3+ re-reads of one file, 3+ consecutive failures, shell output > 10k est tokens).
+     Below the block, one line per finding: what happened + the fix.
+   - If findings is empty: render `+ session clean — no waste detected` inside a `diff` fence (renders green), then list the thresholds (single result > 20k est tokens, 3+ re-reads of one file, 3+ consecutive failures, shell output > 10k est tokens).
    - Closing line: estimated recoverable tokens = sum of finding estTokens, labeled estimate.
    - If skippedLines > 0, note how many malformed lines were skipped.
 4. Do not print raw JSON, do not dump transcript content, do not editorialize beyond the fix column.

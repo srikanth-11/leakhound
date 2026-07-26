@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.4.2] — 2026-07-26
+
+### Changed
+
+- Color-visual rendering in every command: diff-fenced blocks (green KEEP / red DISABLE? / neutral), verdict emoji chips, mandatory bars, direction-aware trend rows, router status chip + injection-matrix line (leakhound-router 0.3.1)
+
 ## [0.4.1] — 2026-07-26
 
 ### Fixed
