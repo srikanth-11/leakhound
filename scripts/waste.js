@@ -38,6 +38,29 @@ function clean(s) {
   return String(s).replace(/[\r\n\t\x00-\x1f]/g, ' ').slice(0, 200);
 }
 
+// Known quiet flags for noisy tools; lets verbose-output fixes name the exact flag.
+const QUIET_FLAGS = [
+  [/\b(npm|pnpm|yarn|bun)\s+(run\s+)?test\b|\bjest\b|\bvitest\b/i, '--reporter=dot (or --silent)'],
+  [/\bpytest\b/i, '-q'],
+  [/\bcargo\s+(test|build|check)\b/i, '--quiet'],
+  [/\bplaywright\s+test\b/i, '--reporter=line'],
+  [/\bgo\s+test\b/i, 'drop -v'],
+  [/\b(gradle|gradlew|mvn)\b/i, '-q']
+];
+function quietFlagFor(cmd) {
+  for (const [re, flag] of QUIET_FLAGS) if (re.test(cmd || '')) return flag;
+  return null;
+}
+
+// Lockfiles, build output, minified bundles: files nobody should ever read whole.
+const ARTIFACT_RE = /(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|poetry\.lock|composer\.lock|Gemfile\.lock|[\\/](dist|build|out|node_modules|coverage|\.next)[\\/]|\.min\.(js|css)$|\.map$)/i;
+
+function baseName(p) {
+  const s = String(p || '');
+  const i = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+  return i >= 0 ? s.slice(i + 1) : s;
+}
+
 function resultText(content) {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
@@ -170,7 +193,11 @@ function analyze(events) {
         category: 'file-reread',
         description: clean(p + ' read ' + arr.length + ' times'),
         estTokens: arr.slice(1).reduce((s, c) => s + c.tokens, 0),
-        fix: 'Reference the earlier read; re-read only changed sections with offset/limit.'
+        fix: {
+          now: 'Stop the repeat purchases of ' + clean(baseName(p)),
+          say: clean('Don\'t re-read ' + baseName(p) + '; reference your earlier read, or read only the changed section with offset/limit.'),
+          adopt: 'One read per file per task; re-reads only for changed sections.'
+        }
       });
     }
   }
@@ -178,19 +205,37 @@ function analyze(events) {
   // giant-read + verbose-output: single oversized tool_result (any tool, not just Read)
   for (const c of calls) {
     if (c.tokens > T.giantRead) {
-      const desc = (c.input && c.input.file_path) || c.name;
+      const fp = c.input && c.input.file_path;
+      const desc = fp || c.name;
+      const isArtifact = fp && ARTIFACT_RE.test(fp);
       findings.push({
         category: 'giant-read',
         description: clean(desc + ' returned ~' + c.tokens + ' tokens'),
         estTokens: c.tokens,
-        fix: 'Read with offset/limit, or Grep for the relevant part first.'
+        fix: isArtifact ? {
+          now: 'Never read ' + clean(baseName(fp)) + ' whole — it is a lockfile/build artifact',
+          say: clean('Never read ' + baseName(fp) + ' in full; Grep it for the one entry you need.'),
+          adopt: 'Lockfiles and build artifacts are Grep-only.'
+        } : {
+          now: 'Slice ' + clean(baseName(desc)) + ' instead of swallowing it',
+          say: clean('For ' + baseName(desc) + ', Grep for the relevant part first, or read with offset/limit.'),
+          adopt: 'Whole-file reads only for files that fit a screen.'
+        }
       });
     } else if ((c.name === 'Bash' || c.name === 'PowerShell') && !c.isError && c.tokens > T.verbose) {
+      const cmd = clean((c.input && c.input.command) || '').slice(0, 60);
+      const flag = quietFlagFor(cmd);
       findings.push({
         category: 'verbose-output',
         description: clean(c.name + ' output ~' + c.tokens + ' tokens'),
         estTokens: c.tokens,
-        fix: 'Filter output before it hits the transcript: tail, grep, quiet flags (e.g. npm test -- --reporter=dot).'
+        fix: {
+          now: flag ? 'Re-run with ' + flag : 'Pipe long output through tail -20',
+          say: clean(flag
+            ? 'When running "' + cmd + '", use ' + flag + ' and tail long output so it stays small.'
+            : 'When running "' + cmd + '", pipe through tail -20 or filter before the output hits the transcript.'),
+          adopt: 'Quiet flags by default for test and build commands.'
+        }
       });
     }
   }
@@ -203,7 +248,11 @@ function analyze(events) {
         category: 'retry-loop',
         description: clean(run[0].name + ' failed ' + run.length + 'x in a row'),
         estTokens: run.reduce((s, c) => s + c.tokens, 0),
-        fix: 'Interrupt after 2 identical failures; change approach instead of retrying (systematic debugging).'
+        fix: {
+          now: 'Interrupt the loop; the approach was wrong at attempt two',
+          say: clean('If ' + run[0].name + ' fails twice the same way, stop and diagnose the root cause instead of retrying.'),
+          adopt: 'Two-strikes rule: identical failure twice means rethink, not retry.'
+        }
       });
     }
     run = [];
@@ -221,7 +270,11 @@ function analyze(events) {
       category: 'cache-churn',
       description: clean('Cache writes ~' + totals.cacheCreation + ' tokens vs reads ~' + totals.cacheRead + ' — prompt cache keeps rebuilding'),
       estTokens: totals.cacheCreation,
-      fix: 'Avoid mid-session config/MCP changes and very long gaps between prompts; both invalidate the prompt cache.'
+      fix: {
+        now: 'Keep session config stable from here on',
+        say: 'Avoid changing MCP servers, plugins, or settings mid-session; each change rebuilds the prompt cache.',
+        adopt: 'Configure first, work second; long idle gaps also cold the cache.'
+      }
     });
   }
 
@@ -231,7 +284,11 @@ function analyze(events) {
       category: 'compaction-waste',
       description: clean('context compacted ' + compactions + 'x; ' + compactionReReads + ' pre-compaction file read(s) repeated after'),
       estTokens: compactionWasteTokens,
-      fix: 'Long sessions compact silently and re-read everything; /clear between tasks or split work across sessions.'
+      fix: {
+        now: '/clear after finishing each task, before starting the next',
+        say: clean('This session compacted ' + compactions + 'x and re-bought ' + compactionReReads + ' file read(s); after each completed task, suggest running /clear before the next one.'),
+        adopt: 'Split marathon work across sessions; a fresh session is cheaper than a compacted one.'
+      }
     });
   }
 
@@ -239,7 +296,31 @@ function analyze(events) {
   const pressure = peakWindowAvg > T.pressureAvg
     ? { avgInput: Math.round(peakWindowAvg), peakInput }
     : null;
-  return { totals, findings, compactions, pressure };
+
+  // Ready-to-paste CLAUDE.md lines: one durable rule per waste class found, so a
+  // recurring leak can be killed permanently by project instructions. We never
+  // write the user's files — the renderer hands them the block to paste.
+  const CLAUDE_MD_LINES = {
+    'file-reread': '- Do not re-read files already read this session; reference earlier reads, use offset/limit for changed sections.',
+    'giant-read': '- For large files, Grep or read with offset/limit instead of whole-file reads.',
+    'giant-read-artifact': '- Never read lockfiles or build artifacts (package-lock.json, dist/, .min.js) whole; Grep them when needed.',
+    'verbose-output': '- Run tests and builds with quiet flags; tail or filter long output.',
+    'retry-loop': '- If a command fails twice identically, stop and diagnose instead of retrying.',
+    'cache-churn': '- Keep MCP/plugin/config stable during a session; configure before working.',
+    'compaction-waste': '- Split long work across sessions; /clear between tasks to avoid context compaction.'
+  };
+  const claudeMd = [];
+  const seenKeys = new Set();
+  for (const f of findings) {
+    let key = f.category;
+    if (key === 'giant-read' && f.fix && f.fix.adopt && f.fix.adopt.startsWith('Lockfiles')) key = 'giant-read-artifact';
+    if (!CLAUDE_MD_LINES[key] || seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    claudeMd.push(CLAUDE_MD_LINES[key]);
+  }
+  if (pressure && !seenKeys.has('compaction-waste')) claudeMd.push(CLAUDE_MD_LINES['compaction-waste']);
+
+  return { totals, findings, compactions, pressure, claudeMd };
 }
 
 // Upper median of a numeric array; small helper so baselines are selftestable.
@@ -303,15 +384,20 @@ function main() {
     compactions: 0,
     pressure: null,
     baseline: null,
+    claudeMd: [],
     skippedLines: 0
   };
+  const claudeMdSeen = new Set();
   const sessionOutputs = []; // per-session output totals, newest first (picked is mtime-desc)
   for (const f of picked) {
     let text;
     try { text = fs.readFileSync(f.full, 'utf8'); } catch { out.skippedLines++; continue; }
     const { events, skipped } = parseTranscriptText(text);
     out.skippedLines += skipped;
-    const { totals, findings, compactions, pressure } = analyze(events);
+    const { totals, findings, compactions, pressure, claudeMd } = analyze(events);
+    for (const line of claudeMd) {
+      if (!claudeMdSeen.has(line)) { claudeMdSeen.add(line); out.claudeMd.push(line); }
+    }
     out.totals.output += totals.output;
     out.totals.cacheCreation += totals.cacheCreation;
     out.totals.cacheRead += totals.cacheRead;
@@ -343,6 +429,7 @@ function fixtureLines() {
   use('g1', 'Read', { file_path: '/tmp/big.json' }); res('g1', 'x'.repeat(100000));
   use('v1', 'Bash', { command: 'npm test' }); res('v1', 'x'.repeat(48000));
   use('gb1', 'Bash', { command: 'dump everything' }); res('gb1', 'x'.repeat(90000));
+  use('lk1', 'Read', { file_path: '/proj/package-lock.json' }); res('lk1', 'x'.repeat(90000));
   for (let i = 0; i < 3; i++) { use('f' + i, 'Bash', { command: 'broken' }); res('f' + i, 'err', true); }
   // Same message.id split across two JSONL lines (one per content block, as Claude Code
   // actually writes them) — identical usage on both must be counted once, not twice.
@@ -394,7 +481,7 @@ function selftest() {
   const { totals, findings, compactions, pressure } = analyze(events);
   assert.equal(compactions, 0, 'flat 35k context fixture has no compactions');
   assert.equal(pressure, null, '35k avg context is below the 50k pressure line');
-  assert.equal(totals.output, 1400, 'output tokens: 9 id-less usage entries x100 + one deduped-by-id entry of 500');
+  assert.equal(totals.output, 1500, 'output tokens: 10 id-less usage entries x100 + one deduped-by-id entry of 500');
   const cats = findings.map(f => f.category);
   for (const c of ['file-reread', 'giant-read', 'verbose-output', 'retry-loop', 'cache-churn']) {
     assert(cats.includes(c), 'missing category ' + c);
@@ -402,9 +489,19 @@ function selftest() {
   const rr = findings.find(f => f.category === 'file-reread');
   assert.equal(rr.estTokens, 200, 'reread cost = repeats after first (2 x 100 est tokens)');
   const giants = findings.filter(f => f.category === 'giant-read');
-  assert.equal(giants.length, 2, 'any tool over threshold flags giant-read, not just Read');
+  assert.equal(giants.length, 3, 'any tool over threshold flags giant-read, not just Read');
   assert(giants.some(f => f.description.startsWith('/tmp/big.json')), 'giant-read uses file_path when present');
   assert(giants.some(f => f.description.startsWith('Bash')), 'giant-read falls back to tool name without file_path');
+
+  // structured fixes: data-specific, copy-pasteable
+  assert.equal(rr.fix.say.includes('app.ts'), true, 'file-reread fix names the actual file');
+  const lockGiant = giants.find(f => f.description.includes('package-lock'));
+  assert(lockGiant.fix.say.startsWith('Never read package-lock.json'), 'artifact giant-read gets the Grep-only fix');
+  assert(lockGiant.fix.adopt.startsWith('Lockfiles'), 'artifact adopt line');
+  const vb = findings.find(f => f.category === 'verbose-output');
+  assert(vb.fix.say.includes('--reporter=dot'), 'npm test verbose fix names the exact quiet flag');
+  assert.equal(quietFlagFor('pytest -x tests/'), '-q', 'quiet-flag table covers pytest');
+  assert.equal(quietFlagFor('some-unknown-tool go'), null, 'unknown commands get no flag');
   const verboseCount = findings.filter(f => f.category === 'verbose-output').length;
   assert.equal(verboseCount, 1, 'a giant-read result must not also double-report as verbose-output');
   for (let i = 1; i < findings.length; i++) {
@@ -417,6 +514,12 @@ function selftest() {
   const desc = clean(dirtyPath + ' read 3 times');
   assert(desc.length <= 200, 'clean() caps description length at 200');
   assert(!desc.includes('\n'), 'clean() strips embedded newlines');
+
+  // claudeMd block: one durable line per waste class found, artifact variant included
+  const cm = analyze(events).claudeMd;
+  assert(cm.some(l => l.includes('lockfiles or build artifacts')), 'claudeMd carries the artifact rule');
+  assert(cm.some(l => l.includes('re-read files already read')), 'claudeMd carries the re-read rule');
+  assert.equal(new Set(cm).size, cm.length, 'claudeMd lines are deduped');
 
   // compaction + pressure fixture
   const comp = analyze(parseTranscriptText(fixtureCompactionLines()).events);

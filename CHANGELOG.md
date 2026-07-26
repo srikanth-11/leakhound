@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## [0.6.0] — 2026-07-26
+
+### Added
+
+- Structured fixes in /waste: every finding carries now / say / adopt — an immediate action, the exact prompt to paste at Claude (with the real file or command baked in), and the durable habit
+- Quiet-flag lookup for verbose-output (npm/jest, vitest, pytest, cargo, playwright, go test, gradle)
+- Lockfile/build-artifact recognition in giant-read (Grep-only rule)
+- Prioritized action plan (top 3 by tokens) in the /waste render
+- CLAUDE.md block generator: paste-ready project rules built from your findings; leakhound never edits your files
+
 ## [0.5.0] — 2026-07-26
 
 ### Added
