@@ -55,13 +55,23 @@ Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every self
 
 **Usage:** `/leakhound:waste` for the latest session, `/leakhound:waste all` for the last 30 days.
 
-**Example output:**
+**Example run.** A session that refactored an API layer comes back like this:
 
 ```diff
-- cache-churn     ████████████████████  240,000
-- giant-read      ██░░░░░░░░░░░░░░░░░░   25,000
-- verbose-output  █░░░░░░░░░░░░░░░░░░░   12,000
+- file-reread     ████████████████████  38,400   src/api/routes.ts read 6 times
+- giant-read      ██████████░░░░░░░░░░  30,100   Read package-lock.json returned ~30k tokens
+- retry-loop      ████░░░░░░░░░░░░░░░░  12,700   Bash failed 5x in a row
+- verbose-output  ███░░░░░░░░░░░░░░░░░  10,900   Bash output ~10.9k tokens
 ```
+
+Estimated recoverable: ~92,100 tokens.
+
+**What you'd do with that:**
+
+1. `file-reread`: tell Claude "stop re-reading routes.ts, reference the earlier read" or ask it to read only the changed section with offset/limit. Biggest single win here.
+2. `giant-read`: lockfiles and build artifacts almost never need a full read. Ask Claude to Grep for the one package it cares about.
+3. `retry-loop`: five identical failures means the approach was wrong at attempt two. Interrupt earlier; the tokens after that were pure loss.
+4. `verbose-output`: test runs should go through quiet flags (`--reporter=dot`, `2>&1 | tail -20`) before they hit the transcript.
 
 A clean session gets a single green line instead.
 
@@ -71,20 +81,51 @@ A clean session gets a single green line instead.
 
 **Usage:** `/leakhound:mcp-audit`
 
+**Example run.** A typical setup that accumulated servers over a few months:
+
+🟢 3 keep · 🔴 3 disable candidates
+
+```diff
+- postgres      ░░░░░░░░░░░░░░░░░░░░    0  never
+- sentry        ░░░░░░░░░░░░░░░░░░░░    0  never
+- browserstack  ░░░░░░░░░░░░░░░░░░░░    0  never
++ linear        ██░░░░░░░░░░░░░░░░░░   14  2026-07-20
++ slack         █████████░░░░░░░░░░░   89  2026-07-24
++ github        ████████████████████  212  2026-07-25
+```
+
+**What you'd do with that:**
+
+1. `postgres` was added for a project that shipped months ago: `claude mcp remove "postgres" -s user`
+2. `sentry` came bundled with a plugin you use for other things: disable just the server in `/plugin` settings, keep the plugin.
+3. `browserstack`, honestly forgotten: remove it, re-add in a minute if a project ever needs it again.
+4. The three KEEP rows need nothing. That's the point of the green.
+
 ### Command: `/leakhound:plugin-audit`
 
 **What it does:** the same treatment for installed plugins. Component inventory (skills, commands, agents, hooks, bundled MCP servers), an always-on context estimate, and 30 days of real invocations. Verdicts are `KEEP`, `DISABLE?` with the per-session tokens you'd get back, or `HOOK-ONLY` for hook-carrying plugins whose usage can't be measured from transcripts. When leakhound can't measure something, it says so instead of guessing.
 
 **Usage:** `/leakhound:plugin-audit`
 
-**Example output:**
+**Example run:**
+
+🟢 2 keep · 🔴 2 disable candidates · 🟡 1 hook-only
 
 ```diff
-- mcp-apps          ░░░░░░░░░░░░░░░░░░░░    0  ~428 tok
-  leakhound-router  ░░░░░░░░░░░░░░░░░░░░    0  ~17 tok  (hook-only)
-+ superpowers       ██░░░░░░░░░░░░░░░░░░   41  ~611 tok
-+ playwright        ████████████████████  489  ~3 tok
+- docs-toolkit      ░░░░░░░░░░░░░░░░░░░░    0  ~950 tok
+- theme-pack        ░░░░░░░░░░░░░░░░░░░░    0  ~310 tok
+  session-guard     ░░░░░░░░░░░░░░░░░░░░    0  ~25 tok  (hook-only)
++ code-review       ███░░░░░░░░░░░░░░░░░   37  ~480 tok
++ commit-helpers    ████████████████████  203  ~60 tok
 ```
+
+Reclaimable every session: ~1,260 tokens (estimate).
+
+**What you'd do with that:**
+
+1. `docs-toolkit` and `theme-pack` haven't fired in a month and cost ~1,260 tokens of context every single session: disable both in `/plugin`. That's headroom back on every prompt from now on.
+2. `session-guard` is hook-only: its work never shows in transcripts, so leakhound refuses to call it dead. Keep it if you want its hook behavior; that's your call, not the audit's.
+3. Run `/leakhound:trend` next week to watch the reclaimable number drop to zero.
 
 ### Command: `/leakhound:model-audit [cost|balanced|quality]`
 
@@ -98,7 +139,31 @@ Your choice persists, and the router uses the same weight. The audit also report
 
 **Usage:** `/leakhound:model-audit cost` (argument saves the preference; omit it to reuse the saved one)
 
-Prefer dollars over token counts? Add prices you maintain yourself to `~/.claude/leakhound.json`:
+**Example run** with weight `cost`:
+
+```diff
+  claude-opus-4-8   top  ████████████████████  1,240,000 out  95,000 in  $31.00
+  claude-haiku-4-5  cheap ██░░░░░░░░░░░░░░░░░░   130,000 out  12,000 in   $0.13
+```
+
+Buckets: `mechanical █████ search ███ prose ██ complex ██████████`
+
+🔴 Delegation: 41 events, 22% to cheaper models
+
+```diff
+- top+mechanical  ████████████████████  610,000  (480 msgs)
+- top+search      ██████░░░░░░░░░░░░░░  185,000  (140 msgs)
+```
+
+Reallocatable: ~795,000 output tokens, roughly $19.90 at your configured prices.
+
+**What you'd do with that:**
+
+1. That 22% delegation number is the real finding: work is going to subagents, but they inherit the expensive model. Install the router (`/plugin install leakhound-router@leakhound`, then `/leakhound-router:router on`) so mechanical and search prompts carry a haiku directive automatically.
+2. For a session you know will be grunt work (renames, config edits, migrations), switch the whole session: `/model sonnet`.
+3. Re-run the audit in a week. Delegation % up, reallocatable down = it's working. Flat = check `/leakhound:trend` and tighten `routerPatterns`.
+
+Prefer dollars over token counts, like the $ figures above? Add prices you maintain yourself to `~/.claude/leakhound.json`:
 
 ```json
 { "prices": { "top": 25, "mid": 6, "cheap": 1 } }
@@ -110,15 +175,19 @@ Prefer dollars over token counts? Add prices you maintain yourself to `~/.claude
 
 **Usage:** `/leakhound:trend`
 
-**Example output:**
+**Example run.** Two weeks after acting on the audits above:
 
 ```diff
-+ mechanicalMsgs       ███▁▁██▅  latest 460      (-322 vs previous)
-+ reallocatableTokens  ███▁▁██▃  latest 347,796  (-1,104,525 vs previous)
-  topOutputTokens      ███▁▁███  latest 3,109,773 (+31,626 vs previous)
++ disable              █▅▅▁▁     latest 0        (-3 vs previous)
++ reclaimableTokens    █▅▅▁▁     latest 0        (-1,260 vs previous)
++ mechanicalMsgs       ███▅▃▂    latest 210      (-95 vs previous)
++ reallocatableTokens  ███▅▃▂    latest 118,000  (-64,000 vs previous)
+  totalCalls           ▃▄▄▅▅     latest 402      (+23 vs previous)
 ```
 
-Closes with a verdict chip: 🟢 trending leaner, 🔴 trending heavier, or ⚪ flat.
+🟢 trending leaner
+
+**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect.
 
 ### Command: `/leakhound-router:router [on|off|status]`
 
@@ -128,10 +197,14 @@ One thing it cannot do, worth knowing before you install: no hook can change the
 
 **Usage:** `/leakhound-router:router on`
 
+**Example run:**
+
 ```
-🟢 Router ON · weight balanced
-mechanical ✅  search —  complex —
+🟢 Router ON · weight cost
+mechanical ✅  search ✅  complex —
 ```
+
+**What happens next:** you type "rename getUser to fetchUser everywhere". The hook classifies it mechanical and quietly tells Claude to do the renaming in a haiku subagent. Your expensive session model writes a couple of coordination lines instead of forty edit calls. You type "design the caching layer" and the hook stays silent, because that one deserves the big model. If a prompt gets misrouted, the directive includes an escape hatch: Claude escalates back to the session model rather than shipping a worse answer.
 
 Tune classification with your own regex patterns (JSON needs double backslashes; anything in `never` wins):
 
