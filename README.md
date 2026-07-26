@@ -1,12 +1,16 @@
-# leakhound 🐕
+# leakhound
 
 ![selftests](https://github.com/srikanth-11/leakhound/actions/workflows/selftest.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![zero deps](https://img.shields.io/badge/dependencies-0-blue)
 
-**Your Claude Code limits die too fast. Leakhound finds out why and hands you the fix.**
+Token-waste forensics for Claude Code. Leakhound finds out where your tokens actually go and hands you the exact command to fix each leak.
 
-I built this because my own Pro plan kept dying by early afternoon and nothing could tell me where the tokens went. ccusage shows how much you spent. `/context` shows a snapshot. Neither tells you why a session burned 400k tokens, which of your 8 MCP servers you haven't touched in a month, or that an expensive model spent the week doing work a cheap one handles fine. Leakhound tells you, with the exact command to fix each finding. Everything runs on your machine.
+## Overview
+
+Existing tools tell you how much you spent. ccusage gives totals, `/context` gives a snapshot. Neither answers the questions that decide whether your plan survives the afternoon: why did this session burn 400k tokens, which of your MCP servers and plugins are dead weight, and is an expensive model doing work a cheap one handles fine?
+
+Leakhound answers all three, locally, with zero dependencies. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
 
 🟢 5 keep · 🔴 3 disable candidates
 
@@ -18,28 +22,28 @@ I built this because my own Pro plan kept dying by early afternoon and nothing c
 + playwright    ████████████████████  360  2026-07-23
 ```
 
-Red rows are dead weight, green rows earn their keep, and it looks like this in your terminal too. That's the actual first run on the machine leakhound was built on: 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
+Red rows are dead weight, green rows earn their keep. Output looks like this in your terminal too.
 
-## Quick start
+## Installation
 
 ```
 /plugin marketplace add srikanth-11/leakhound
 /plugin install leakhound@leakhound
 ```
 
-If you also want the per-prompt router (it registers a hook, see below):
+Optional companion, only if you want the automatic per-prompt router (it registers a hook):
 
 ```
 /plugin install leakhound-router@leakhound
 ```
 
-Requires Node.js on PATH. Works on Windows, macOS, and Linux. CI runs every selftest on all three.
+Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every selftest on all three.
 
-## Commands
+## Features
 
-### `/leakhound:waste`
+### Command: `/leakhound:waste`
 
-Parses your session transcript (local JSONL) and reports the top token sinks, worst first:
+**What it does:** parses your session transcript (local JSONL) and reports the top token sinks, worst first, each with a fix.
 
 | Finds | Example | Suggested fix |
 |---|---|---|
@@ -49,7 +53,9 @@ Parses your session transcript (local JSONL) and reports the top token sinks, wo
 | Verbose output | 12k-token test log | quiet flags, tail |
 | Cache churn | prompt cache rebuilding | avoid mid-session config changes |
 
-`/leakhound:waste all` aggregates the last 30 days for the project. Findings render as red bars sized by cost; a clean session gets a single green line:
+**Usage:** `/leakhound:waste` for the latest session, `/leakhound:waste all` for the last 30 days.
+
+**Example output:**
 
 ```diff
 - cache-churn     ████████████████████  240,000
@@ -57,13 +63,21 @@ Parses your session transcript (local JSONL) and reports the top token sinks, wo
 - verbose-output  █░░░░░░░░░░░░░░░░░░░   12,000
 ```
 
-### `/leakhound:mcp-audit`
+A clean session gets a single green line instead.
 
-Takes every configured MCP server (user, project, and plugin-bundled) and checks it against 30 days of actual usage across all your projects. Zero calls in 30 days gets a `DISABLE?` verdict plus the removal command.
+### Command: `/leakhound:mcp-audit`
 
-### `/leakhound:plugin-audit`
+**What it does:** checks every configured MCP server (user, project, and plugin-bundled) against 30 days of actual usage across all your projects. Zero calls in 30 days gets a `DISABLE?` verdict plus the removal command.
 
-Same idea for installed plugins: component inventory (skills, commands, agents, hooks, bundled MCP servers), an always-on context estimate, and 30 days of real invocations. Verdicts are `KEEP`, `DISABLE?` with the per-session tokens you'd get back, or `HOOK-ONLY` for hook-carrying plugins whose usage can't be measured from transcripts. When leakhound can't measure something, it says so instead of guessing.
+**Usage:** `/leakhound:mcp-audit`
+
+### Command: `/leakhound:plugin-audit`
+
+**What it does:** the same treatment for installed plugins. Component inventory (skills, commands, agents, hooks, bundled MCP servers), an always-on context estimate, and 30 days of real invocations. Verdicts are `KEEP`, `DISABLE?` with the per-session tokens you'd get back, or `HOOK-ONLY` for hook-carrying plugins whose usage can't be measured from transcripts. When leakhound can't measure something, it says so instead of guessing.
+
+**Usage:** `/leakhound:plugin-audit`
+
+**Example output:**
 
 ```diff
 - mcp-apps          ░░░░░░░░░░░░░░░░░░░░    0  ~428 tok
@@ -72,25 +86,31 @@ Same idea for installed plugins: component inventory (skills, commands, agents, 
 + playwright        ████████████████████  489  ~3 tok
 ```
 
-### `/leakhound:model-audit [cost|balanced|quality]`
+### Command: `/leakhound:model-audit [cost|balanced|quality]`
 
-Answers one question: is a top-tier model doing haiku-grade work? It classifies 30 days of assistant messages by tool pattern and output size (an edit wrapped in heavy reasoning counts as complex, not mechanical), maps each model to a tier, and flags mismatches based on your preference:
+**What it does:** answers one question: is a top-tier model doing haiku-grade work? Classifies 30 days of assistant messages by tool pattern and output size (an edit wrapped in heavy reasoning counts as complex, not mechanical), maps each model to a tier, and flags mismatches based on your preference:
 
 - `cost` flags top-tier models on mechanical and search work. Aggressive.
 - `balanced` flags top-tier on mechanical work only.
 - `quality` flips direction: it also flags cheap models doing complex work as a quality risk.
 
-Your choice persists, and the router uses the same weight. The audit also reports delegation compliance: of the times work was handed to a subagent, how often a cheaper model got the job.
+Your choice persists, and the router uses the same weight. The audit also reports delegation compliance: of the times work went to a subagent, how often a cheaper model got the job.
 
-Want dollars instead of token counts? Add prices you maintain yourself to `~/.claude/leakhound.json`:
+**Usage:** `/leakhound:model-audit cost` (argument saves the preference; omit it to reuse the saved one)
+
+Prefer dollars over token counts? Add prices you maintain yourself to `~/.claude/leakhound.json`:
 
 ```json
 { "prices": { "top": 25, "mid": 6, "cheap": 1 } }
 ```
 
-### `/leakhound:trend`
+### Command: `/leakhound:trend`
 
-Are the numbers actually improving? Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`. Trend renders deltas and sparklines over the last 12 runs, and the rows are direction-aware: a falling waste metric is green even though the delta is negative.
+**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
+
+**Usage:** `/leakhound:trend`
+
+**Example output:**
 
 ```diff
 + mechanicalMsgs       ███▁▁██▅  latest 460      (-322 vs previous)
@@ -98,20 +118,22 @@ Are the numbers actually improving? Every audit run appends a summary line to `~
   topOutputTokens      ███▁▁███  latest 3,109,773 (+31,626 vs previous)
 ```
 
-It closes with a verdict chip: 🟢 trending leaner, 🔴 trending heavier, or ⚪ flat.
+Closes with a verdict chip: 🟢 trending leaner, 🔴 trending heavier, or ⚪ flat.
 
-### `/leakhound-router:router [on|off|status]`
+### Command: `/leakhound-router:router [on|off|status]`
 
-This is the automatic part, and it ships as a separate plugin on purpose: if you only want the audits, you never pay the hook's per-prompt cost. When the router is on, a small hook classifies each prompt (mechanical, search, or complex) and injects a directive telling Claude to run cheap work through a haiku subagent, following your saved weight.
+**What it does:** the automatic part, shipped as a separate plugin on purpose: audit-only installs never pay the hook's per-prompt cost. When on, a small hook classifies each prompt (mechanical, search, or complex) and injects a directive telling Claude to run cheap work through a haiku subagent, following your saved weight.
+
+One thing it cannot do, worth knowing before you install: no hook can change the session model. That's a platform rule, not a leakhound choice. The router moves the execution work, which is where most of the burn actually is.
+
+**Usage:** `/leakhound-router:router on`
 
 ```
 🟢 Router ON · weight balanced
 mechanical ✅  search —  complex —
 ```
 
-One thing it cannot do, and you should know this before installing: no hook can change the session model. That's a platform rule, not a leakhound choice. What the router moves is the execution work, which is where most of the burn actually is. The main model keeps coordinating.
-
-You can tune classification with your own regex patterns (JSON needs double backslashes; anything in `never` wins):
+Tune classification with your own regex patterns (JSON needs double backslashes; anything in `never` wins):
 
 ```json
 {
@@ -136,11 +158,11 @@ All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/
 
 ## Privacy
 
-Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take my word for it: the whole thing is five small plain-Node scripts, read them.
+Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it: the whole thing is five small plain-Node scripts, read them.
 
 ## How it works
 
-Five zero-dependency Node scripts. Four of them parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. The fifth is the router hook. Command markdown renders their JSON. You can run them directly:
+Five zero-dependency Node scripts. Four parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. The fifth is the router hook. Command markdown renders their JSON. You can run them directly:
 
 ```
 node scripts/waste.js --project-dir /path/to/project
@@ -155,10 +177,10 @@ Every script has a `--selftest` flag. CI runs all six on ubuntu, macos, and wind
 ## FAQ
 
 **Why not just switch the model automatically?**
-Can't be done. No Claude Code hook can change the session model; I checked the hook output schema before building this. Leakhound does the two things that are possible: audits that tell you what to change, and a router that moves execution work to cheaper subagents on its own.
+Can't be done. No Claude Code hook can change the session model; we checked the hook output schema before building this. Leakhound does the two things that are possible: audits that tell you what to change, and a router that moves execution work to cheaper subagents on its own.
 
 **Will it tell me to disable something I actually use?**
-It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict I found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
+It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
 
 **What does leakhound itself cost?**
 About 253 always-on tokens for the audit plugin, with zero hooks. The router plugin adds one hook that takes roughly 240ms per prompt. That overhead is the whole reason it's a separate opt-in install.
