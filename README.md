@@ -8,7 +8,7 @@ Token-waste forensics for Claude Code. Leakhound finds out where your tokens act
 
 ## Overview
 
-Existing tools tell you how much you spent. ccusage gives totals, `/context` gives a snapshot. Neither answers the questions that decide whether your plan survives the afternoon: why did this session burn 400k tokens, which of your MCP servers and plugins are dead weight, and is an expensive model doing work a cheap one handles fine?
+Usage trackers tell you how much you spent; a snapshot shows how full the context is right now. Neither answers the questions that decide whether your plan survives the afternoon: why did this session burn 400k tokens, which of your MCP servers and plugins are dead weight, and is an expensive model doing work a cheap one handles fine?
 
 Leakhound answers all three, locally, with zero dependencies. The audits themselves are plain scripts, not model calls, so running leakhound costs roughly nothing. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
 
