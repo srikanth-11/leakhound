@@ -47,6 +47,7 @@ function tailStats(text) {
     let e;
     try { e = JSON.parse(line); } catch { continue; }
     if (!e || e.type !== 'assistant' || !e.message || !e.message.usage) continue;
+    if (e.isSidechain === true) continue; // subagent lines: their tiny context isn't the session's
     const u = e.message.usage;
     const proxy = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
     if (proxy > 0) proxies.push(proxy);
@@ -103,7 +104,7 @@ function selftest() {
   const s = tailStats(text);
   assert.equal(s.ctx, 612000, 'latest context proxy');
   assert.equal(s.prev, 410000, 'previous proxy for the arrow');
-  assert.equal(s.lastOutput, 2100, 'last-turn output');
+  assert.equal(s.lastOutput, 2100, 'last-turn output; sidechain line ignored');
 
   const th = { yellow: 500000, red: 800000 };
   const b = badge(s, th);

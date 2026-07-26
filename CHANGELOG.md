@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.2] — 2026-07-26
+
+### Fixed
+
+- Statusline ignores subagent (sidechain) usage lines: the meter tracks the main conversation's context only, so it can no longer dip to a subagent's small context mid-run. A flat number while subagents work is correct: their burn never inflates your main context
+
 ## [0.8.1] — 2026-07-26
 
 Main plugin and leakhound-guard both move to 0.8.1; leakhound-router stays 0.3.3. The changelog tracks the main plugin, with companion versions named inline.
