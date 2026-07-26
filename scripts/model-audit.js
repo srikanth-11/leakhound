@@ -346,10 +346,15 @@ function main() {
   console.log(JSON.stringify(out, null, 2));
 
   try {
-    fs.appendFileSync(path.join(configDir(), 'leakhound-history.jsonl'), JSON.stringify({
-      ts: new Date().toISOString(), tool: 'model-audit',
-      summary: { weight, topOutputTokens, mechanicalMsgs: buckets.mechanical, reallocatableTokens }
-    }) + '\n');
+    const historyPath = path.join(configDir(), 'leakhound-history.jsonl');
+    let isSymlink = false;
+    try { isSymlink = fs.lstatSync(historyPath).isSymbolicLink(); } catch {}
+    if (!isSymlink) {
+      fs.appendFileSync(historyPath, JSON.stringify({
+        ts: new Date().toISOString(), tool: 'model-audit',
+        summary: { weight, topOutputTokens, mechanicalMsgs: buckets.mechanical, reallocatableTokens }
+      }) + '\n');
+    }
   } catch {}
 }
 

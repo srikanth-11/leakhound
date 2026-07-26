@@ -27,6 +27,13 @@ function estTokens(str) {
   return Math.round((str || '').length / 4);
 }
 
+// Findings descriptions are built from file_path/tool-name strings that can come straight
+// from transcript content (e.g. a giant-read's file_path) — strip control chars so a path
+// can't inject newlines/escapes into rendered output, and cap length defensively.
+function clean(s) {
+  return String(s).replace(/[\r\n\t\x00-\x1f]/g, ' ').slice(0, 200);
+}
+
 function resultText(content) {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
@@ -119,7 +126,7 @@ function analyze(events) {
     if (arr.length >= T.rereadCount) {
       findings.push({
         category: 'file-reread',
-        description: p + ' read ' + arr.length + ' times',
+        description: clean(p + ' read ' + arr.length + ' times'),
         estTokens: arr.slice(1).reduce((s, c) => s + c.tokens, 0),
         fix: 'Reference the earlier read; re-read only changed sections with offset/limit.'
       });
@@ -132,14 +139,14 @@ function analyze(events) {
       const desc = (c.input && c.input.file_path) || c.name;
       findings.push({
         category: 'giant-read',
-        description: desc + ' returned ~' + c.tokens + ' tokens',
+        description: clean(desc + ' returned ~' + c.tokens + ' tokens'),
         estTokens: c.tokens,
         fix: 'Read with offset/limit, or Grep for the relevant part first.'
       });
     } else if ((c.name === 'Bash' || c.name === 'PowerShell') && !c.isError && c.tokens > T.verbose) {
       findings.push({
         category: 'verbose-output',
-        description: c.name + ' output ~' + c.tokens + ' tokens',
+        description: clean(c.name + ' output ~' + c.tokens + ' tokens'),
         estTokens: c.tokens,
         fix: 'Filter output before it hits the transcript: tail, grep, quiet flags (e.g. npm test -- --reporter=dot).'
       });
@@ -152,7 +159,7 @@ function analyze(events) {
     if (run.length >= T.retryRun) {
       findings.push({
         category: 'retry-loop',
-        description: run[0].name + ' failed ' + run.length + 'x in a row',
+        description: clean(run[0].name + ' failed ' + run.length + 'x in a row'),
         estTokens: run.reduce((s, c) => s + c.tokens, 0),
         fix: 'Interrupt after 2 identical failures; change approach instead of retrying (systematic debugging).'
       });
@@ -170,7 +177,7 @@ function analyze(events) {
   if (totals.cacheCreation > T.churnMinCreation && totals.cacheCreation > T.churnRatio * totals.cacheRead) {
     findings.push({
       category: 'cache-churn',
-      description: 'Cache writes ~' + totals.cacheCreation + ' tokens vs reads ~' + totals.cacheRead + ' — prompt cache keeps rebuilding',
+      description: clean('Cache writes ~' + totals.cacheCreation + ' tokens vs reads ~' + totals.cacheRead + ' — prompt cache keeps rebuilding'),
       estTokens: totals.cacheCreation,
       fix: 'Avoid mid-session config/MCP changes and very long gaps between prompts; both invalidate the prompt cache.'
     });
@@ -288,6 +295,14 @@ function selftest() {
   for (let i = 1; i < findings.length; i++) {
     assert(findings[i - 1].estTokens >= findings[i].estTokens, 'findings sorted desc by estTokens');
   }
+
+  // clean(): a hostile 500-char path with an embedded newline must not blow up a
+  // rendered description or break the diff-fenced output with a stray line break.
+  const dirtyPath = 'x'.repeat(500) + '\n' + 'y'.repeat(50);
+  const desc = clean(dirtyPath + ' read 3 times');
+  assert(desc.length <= 260, 'clean() caps description length');
+  assert(!desc.includes('\n'), 'clean() strips embedded newlines');
+
   console.log('selftest OK');
 }
 

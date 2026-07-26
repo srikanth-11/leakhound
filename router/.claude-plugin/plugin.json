@@ -1,7 +1,7 @@
 {
   "name": "leakhound-router",
   "description": "Leakhound's opt-in per-prompt router: classifies every prompt (mechanical / search / complex) and injects weight-aware directives so cheap work executes on haiku subagents. Companion to the leakhound plugin — install this only if you want the automatic lever; it registers a UserPromptSubmit hook.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "srikanth-11",
     "url": "https://github.com/srikanth-11"

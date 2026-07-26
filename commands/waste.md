@@ -5,7 +5,7 @@ description: Find where this project's Claude Code tokens went — top waste sou
 Analyze token waste for the current project.
 
 1. Run via Bash (quote the path; works on Windows and Unix):
-   `node "${CLAUDE_PLUGIN_ROOT}/scripts/waste.js" --project-dir "<current working directory>" $ARGUMENTS`
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/waste.js" --project-dir "<current working directory>" [--all]`
    - If the user passed `all`, pass `--all`.
    - If node is not found, tell the user: leakhound needs Node.js on PATH (https://nodejs.org) and stop.
 2. Parse the JSON output.

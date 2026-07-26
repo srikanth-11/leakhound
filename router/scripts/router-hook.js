@@ -17,12 +17,26 @@ function readConfig() {
     return (c && typeof c === 'object') ? c : {};
   } catch { return {}; }
 }
+// Writes to a temp file then renames over the target, and refuses to touch a symlinked
+// target — a malicious symlink at configPath() could otherwise redirect this write to
+// overwrite an arbitrary file the process has access to.
+function safeWrite(filePath, content) {
+  try {
+    try {
+      if (fs.lstatSync(filePath).isSymbolicLink()) return;
+    } catch {}
+    const tmp = filePath + '.tmp';
+    fs.writeFileSync(tmp, content);
+    fs.renameSync(tmp, filePath);
+  } catch {}
+}
+
 function writeConfig(cfg) {
   try {
     const dir = configDir();
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(configPath(), JSON.stringify(cfg, null, 2));
   } catch {}
+  safeWrite(configPath(), JSON.stringify(cfg, null, 2));
 }
 
 const MECH = /\b(typo|rename|reword|bump|indent|reformat|format (this|the|that)|add (a )?comment|remove (a |the )?comment|delete (this|the) (file|line|import|comment)|change (the )?(text|string|label|color|value|name)|update (the )?version|one[- ]?liner)\b/i;
@@ -135,6 +149,28 @@ function selftest() {
   setRouter('off');
   const cfg2 = JSON.parse(fs.readFileSync(path.join(tmp, 'leakhound.json'), 'utf8'));
   assert.equal(cfg2.router, 'off');
+
+  // symlink safety: if leakhound.json is a symlink pointing elsewhere, setRouter must not
+  // write through it. Symlink creation needs a privilege Windows doesn't grant by default,
+  // so skip the assert (not the whole selftest) when it can't be created.
+  let symlinked = false;
+  const linkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'leakhound-'));
+  const targetFile = path.join(linkDir, 'target.json');
+  const targetContent = '{"untouched":true}';
+  fs.writeFileSync(targetFile, targetContent);
+  const linkPath = path.join(linkDir, 'leakhound.json');
+  try {
+    fs.symlinkSync(targetFile, linkPath);
+    symlinked = true;
+  } catch {}
+  if (symlinked) {
+    const savedConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = linkDir;
+    setRouter('on');
+    assert.equal(fs.readFileSync(targetFile, 'utf8'), targetContent, 'symlinked leakhound.json must not redirect the write to its target');
+    if (savedConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = savedConfigDir;
+  }
+
   console.log('selftest OK');
 }
 

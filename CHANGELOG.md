@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## [0.4.3] — 2026-07-26
+
+### Security
+
+- Structural invocation matching in plugin-audit: needles are now checked against parsed transcript entries (tool_use block names/inputs, string user-message content) instead of raw substrings, so poisoned tool output (e.g. web content quoting `<command-name>/x:y` or `mcp__plugin_x_`) can no longer inflate a plugin's usage count
+- Symlink-safe config and history writes: router-hook's `leakhound.json` write now goes through a write-temp-then-rename helper that refuses to follow a symlinked target; the model-audit, mcp-audit, and plugin-audit history appends now skip silently if `leakhound-history.jsonl` is a symlink
+- CI least privilege: top-level `permissions: contents: read` on the selftest workflow, with `actions/checkout` and `actions/setup-node` pinned to commit SHAs (leakhound-router 0.3.2)
+- Sanitized `/waste` finding descriptions (control characters stripped, length-capped) so a hostile file path or tool name can't inject newlines into rendered output
+- Removed the literal `$ARGUMENTS` placeholder from the `/waste` command template
+
 ## [0.4.2] — 2026-07-26
 
 ### Changed

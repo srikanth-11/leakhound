@@ -89,6 +89,44 @@ function verdictFor(inv, used, name) {
   return { verdict: 'DISABLE?', hint: 'disable via /plugin (or claude plugin disable ' + name + ')' };
 }
 
+// Needle shapes are matched structurally against parsed JSONL entries, not against raw
+// line text — a plain substring match would also fire inside tool_result content (e.g.
+// poisoned web content quoting "<command-name>/x:y" or "mcp__plugin_x_"), inflating
+// counts for plugins that were never actually invoked. The line.includes() prefilters
+// below stay as a cheap gate so we only pay for JSON.parse on lines that could match.
+function buildNeedle(name, skillNames, agentNames) {
+  const mcpPrefix = 'mcp__plugin_' + name + '_';
+  const skillPrefix = name + ':';
+  const commandMarker = '<command-name>/' + name + ':';
+  const prefilter = [
+    '"skill":"' + name + ':',
+    commandMarker,
+    mcpPrefix,
+    '"subagent_type":"' + name + ':'
+  ];
+  for (const sn of skillNames) prefilter.push('"skill":"' + sn + '"');
+  for (const an of agentNames) prefilter.push('"subagent_type":"' + an + '"');
+  return { name, prefilter, mcpPrefix, skillPrefix, skillNames, agentNames, commandMarker };
+}
+
+function matchesPlugin(entry, nd) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (entry.type === 'assistant' && entry.message && Array.isArray(entry.message.content)) {
+    for (const b of entry.message.content) {
+      if (!b || b.type !== 'tool_use') continue;
+      if (typeof b.name === 'string' && b.name.startsWith(nd.mcpPrefix)) return true;
+      const input = (b.input && typeof b.input === 'object') ? b.input : {};
+      if (typeof input.skill === 'string' && (input.skill.startsWith(nd.skillPrefix) || nd.skillNames.includes(input.skill))) return true;
+      if (typeof input.subagent_type === 'string' && (input.subagent_type.startsWith(nd.skillPrefix) || nd.agentNames.includes(input.subagent_type))) return true;
+    }
+    return false;
+  }
+  if (entry.type === 'user' && entry.message && typeof entry.message.content === 'string') {
+    return entry.message.content.includes(nd.commandMarker);
+  }
+  return false;
+}
+
 function countInvocations(projectsRoot, days, needles) {
   const cutoff = Date.now() - days * DAY_MS;
   const counts = new Map();
@@ -107,12 +145,19 @@ function countInvocations(projectsRoot, days, needles) {
       let text;
       try { text = fs.readFileSync(full, 'utf8'); } catch { continue; }
       for (const line of text.split('\n')) {
+        if (!line) continue;
+        const candidates = [];
         for (const nd of needles) {
-          for (const tk of nd.tokens) {
-            if (line.includes(tk)) {
-              counts.set(nd.name, (counts.get(nd.name) || 0) + 1);
-              break;
-            }
+          for (const tk of nd.prefilter) {
+            if (line.includes(tk)) { candidates.push(nd); break; }
+          }
+        }
+        if (!candidates.length) continue;
+        let entry;
+        try { entry = JSON.parse(line); } catch { continue; }
+        for (const nd of candidates) {
+          if (matchesPlugin(entry, nd)) {
+            counts.set(nd.name, (counts.get(nd.name) || 0) + 1);
           }
         }
       }
@@ -132,15 +177,7 @@ function main() {
   const needles = plugins.map(p => {
     const inv = inventory(p.installPath);
     invByPlugin.set(p.name, inv);
-    const tokens = [
-      '"skill":"' + p.name + ':',
-      '<command-name>/' + p.name + ':',
-      'mcp__plugin_' + p.name + '_',
-      '"subagent_type":"' + p.name + ':'
-    ];
-    for (const sn of inv.skillNames) tokens.push('"skill":"' + sn + '"');
-    for (const an of inv.agentNames) tokens.push('"subagent_type":"' + an + '"');
-    return { name: p.name, tokens };
+    return buildNeedle(p.name, inv.skillNames, inv.agentNames);
   });
   const counts = countInvocations(path.join(configDir(), 'projects'), 30, needles);
   const rows = plugins.map(p => {
@@ -174,7 +211,9 @@ function main() {
       summary
     });
     const historyPath = path.join(configDir(), 'leakhound-history.jsonl');
-    fs.appendFileSync(historyPath, historyLine + '\n');
+    let isSymlink = false;
+    try { isSymlink = fs.lstatSync(historyPath).isSymbolicLink(); } catch {}
+    if (!isSymlink) fs.appendFileSync(historyPath, historyLine + '\n');
   } catch {}
 }
 
@@ -236,25 +275,23 @@ function selftest() {
   fs.mkdirSync(projRoot, { recursive: true });
   const lines = [
     JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Skill', input: { skill: 'alpha:boom' } }] } }),
-    '<command-message>x</command-message><command-name>/alpha:bang</command-name>',
+    JSON.stringify({ type: 'user', message: { content: '<command-message>x</command-message><command-name>/alpha:bang</command-name>' } }),
     JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't2', name: 'mcp__plugin_alpha_boomserver__go', input: {} }] } }),
     JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't3', name: 'Agent', input: { subagent_type: 'alpha:scout' } }] } }),
-    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't4', name: 'Skill', input: { skill: 'boom' } }] } })
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't4', name: 'Skill', input: { skill: 'boom' } }] } }),
+    // poisoning attempt: tool_result-shaped content quoting both a command-name marker and
+    // an mcp__plugin_ marker for "beta" — neither is a real tool_use/command invocation, so
+    // structural matching (not raw substring matching) must not count it.
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_result', tool_use_id: 'poison1', content: '<command-name>/beta:evil</command-name> mcp__plugin_beta_x__go' }] } })
   ];
   fs.writeFileSync(path.join(projRoot, 's.jsonl'), lines.join('\n'));
 
-  const alphaTokens = ['"skill":"alpha:', '<command-name>/alpha:', 'mcp__plugin_alpha_', '"subagent_type":"alpha:']
-    .concat(inv.skillNames.map(n => '"skill":"' + n + '"'))
-    .concat(inv.agentNames.map(n => '"subagent_type":"' + n + '"'));
-  const betaTokens = ['"skill":"beta:', '<command-name>/beta:', 'mcp__plugin_beta_', '"subagent_type":"beta:']
-    .concat(invMissing.skillNames.map(n => '"skill":"' + n + '"'))
-    .concat(invMissing.agentNames.map(n => '"subagent_type":"' + n + '"'));
   const counts = countInvocations(path.join(tmp, 'projects'), 30, [
-    { name: 'alpha', tokens: alphaTokens },
-    { name: 'beta', tokens: betaTokens }
+    buildNeedle('alpha', inv.skillNames, inv.agentNames),
+    buildNeedle('beta', invMissing.skillNames, invMissing.agentNames)
   ]);
   assert.equal(counts.get('alpha'), 5, 'four prefixed shapes + one bare skill invocation counted');
-  assert.equal(counts.get('beta') || 0, 0, 'beta unused');
+  assert.equal(counts.get('beta') || 0, 0, 'beta unused, and poisoned tool_result content does not inflate the count');
 
   // verdict: hook-only plugin with zero measured invocations must not read as DISABLE?
   const hookyVerdict = verdictFor(invHooky, 0, 'hooky');

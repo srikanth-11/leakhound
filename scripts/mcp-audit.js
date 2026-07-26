@@ -193,7 +193,9 @@ function main() {
       summary
     });
     const historyPath = path.join(configDir(), 'leakhound-history.jsonl');
-    fs.appendFileSync(historyPath, historyLine + '\n');
+    let isSymlink = false;
+    try { isSymlink = fs.lstatSync(historyPath).isSymbolicLink(); } catch {}
+    if (!isSymlink) fs.appendFileSync(historyPath, historyLine + '\n');
   } catch {}
 }
 
