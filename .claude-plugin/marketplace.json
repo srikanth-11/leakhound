@@ -1,0 +1,20 @@
+{
+  "name": "leakhound",
+  "owner": {
+    "name": "srikanth-11"
+  },
+  "plugins": [
+    {
+      "name": "leakhound",
+      "source": "./",
+      "description": "Token-waste forensics: /waste, /mcp-audit, /plugin-audit, /model-audit, /trend — causes, verdicts, and exact fixes. No hooks, no per-prompt cost.",
+      "category": "productivity"
+    },
+    {
+      "name": "leakhound-router",
+      "source": "./router",
+      "description": "Opt-in companion: per-prompt hook that routes mechanical/search work to haiku subagents, weighted by your cost vs quality preference.",
+      "category": "productivity"
+    }
+  ]
+}

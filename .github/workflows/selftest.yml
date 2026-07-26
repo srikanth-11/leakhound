@@ -1,0 +1,19 @@
+name: selftests
+on: [push, pull_request]
+jobs:
+  selftest:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/waste.js --selftest
+      - run: node scripts/mcp-audit.js --selftest
+      - run: node scripts/model-audit.js --selftest
+      - run: node scripts/plugin-audit.js --selftest
+      - run: node scripts/trend.js --selftest
+      - run: node router/scripts/router-hook.js --selftest
