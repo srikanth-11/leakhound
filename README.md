@@ -51,7 +51,7 @@ Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every self
 | Re-read files | `app.ts` read 5 times | reference the earlier read; offset/limit |
 | Giant reads | one 25k-token result dump | Grep first, read the slice |
 | Retry loops | same command failed 4 times | stop after 2, change approach |
-| Verbose output | 12k-token test log | quiet flags, tail |
+| Verbose output | 12k-token test log | quiet flags, trim output |
 | Cache churn | prompt cache rebuilding | avoid mid-session config changes |
 | Compaction waste | context squashed, files re-read after | /clear between tasks, split long sessions |
 
@@ -82,7 +82,7 @@ Every finding ships a three-part fix: an immediate action, the exact prompt to p
 
 > **compaction-waste** · now: `/clear` after finishing each task · say: *"This session compacted 2x and re-bought 5 file reads; after each completed task, run /clear before the next one."* · adopt: split marathon work across sessions
 >
-> **verbose-output** · now: re-run with `--reporter=dot` · say: *"When running `npm test`, use --reporter=dot and tail long output."* · adopt: quiet flags by default
+> **verbose-output** · now: re-run with `--reporter=dot` · say: *"When running `npm test`, use --reporter=dot and trim long output."* · adopt: quiet flags by default
 
 The quiet flag is looked up from the actual command that was noisy (npm/jest, pytest, cargo, playwright, go test, gradle all covered), and lockfile reads get their own rule: Grep-only, never whole.
 

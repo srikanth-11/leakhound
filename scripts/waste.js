@@ -230,10 +230,10 @@ function analyze(events) {
         description: clean(c.name + ' output ~' + c.tokens + ' tokens'),
         estTokens: c.tokens,
         fix: {
-          now: flag ? 'Re-run with ' + flag : 'Pipe long output through tail -20',
+          now: flag ? 'Re-run with ' + flag : 'Trim long output: tail -20 (or Select-Object -Last 20 in PowerShell)',
           say: clean(flag
-            ? 'When running "' + cmd + '", use ' + flag + ' and tail long output so it stays small.'
-            : 'When running "' + cmd + '", pipe through tail -20 or filter before the output hits the transcript.'),
+            ? 'When running "' + cmd + '", use ' + flag + ' and trim long output so it stays small.'
+            : 'When running "' + cmd + '", trim it first: tail -20 on macOS/Linux, Select-Object -Last 20 in PowerShell.'),
           adopt: 'Quiet flags by default for test and build commands.'
         }
       });
@@ -304,7 +304,7 @@ function analyze(events) {
     'file-reread': '- Do not re-read files already read this session; reference earlier reads, use offset/limit for changed sections.',
     'giant-read': '- For large files, Grep or read with offset/limit instead of whole-file reads.',
     'giant-read-artifact': '- Never read lockfiles or build artifacts (package-lock.json, dist/, .min.js) whole; Grep them when needed.',
-    'verbose-output': '- Run tests and builds with quiet flags; tail or filter long output.',
+    'verbose-output': '- Run tests and builds with quiet flags; trim long output (tail on macOS/Linux, Select-Object -Last in PowerShell).',
     'retry-loop': '- If a command fails twice identically, stop and diagnose instead of retrying.',
     'cache-churn': '- Keep MCP/plugin/config stable during a session; configure before working.',
     'compaction-waste': '- Split long work across sessions; /clear between tasks to avoid context compaction.'
