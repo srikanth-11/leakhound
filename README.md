@@ -8,16 +8,17 @@
 
 I built this because my own Pro plan kept dying by early afternoon and nothing could tell me where the tokens went. ccusage shows how much you spent. `/context` shows a snapshot. Neither tells you why a session burned 400k tokens, which of your 8 MCP servers you haven't touched in a month, or that an expensive model spent the week doing work a cheap one handles fine. Leakhound tells you, with the exact command to fix each finding. Everything runs on your machine.
 
-```
-Server        Origin              Calls (30d)              Verdict
-playwright    plugin:playwright   ████████████████████ 360  KEEP
-figma         plugin:figma        █░░░░░░░░░░░░░░░░░░░  11   KEEP
-vercel        plugin:vercel       ░░░░░░░░░░░░░░░░░░░░   0   DISABLE? ✗
-github        plugin:github       ░░░░░░░░░░░░░░░░░░░░   0   DISABLE? ✗
-expo          plugin:expo         ░░░░░░░░░░░░░░░░░░░░   0   DISABLE? ✗
+🟢 5 keep · 🔴 3 disable candidates
+
+```diff
+- vercel        ░░░░░░░░░░░░░░░░░░░░    0  never
+- github        ░░░░░░░░░░░░░░░░░░░░    0  never
+- expo          ░░░░░░░░░░░░░░░░░░░░    0  never
++ figma         █░░░░░░░░░░░░░░░░░░░   11  2026-07-19
++ playwright    ████████████████████  360  2026-07-23
 ```
 
-That's the actual first run on the machine leakhound was built on. It found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
+Red rows are dead weight, green rows earn their keep, and it looks like this in your terminal too. That's the actual first run on the machine leakhound was built on: 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
 
 ## Quick start
 
@@ -48,7 +49,13 @@ Parses your session transcript (local JSONL) and reports the top token sinks, wo
 | Verbose output | 12k-token test log | quiet flags, tail |
 | Cache churn | prompt cache rebuilding | avoid mid-session config changes |
 
-`/leakhound:waste all` aggregates the last 30 days for the project.
+`/leakhound:waste all` aggregates the last 30 days for the project. Findings render as red bars sized by cost; a clean session gets a single green line:
+
+```diff
+- cache-churn     ████████████████████  240,000
+- giant-read      ██░░░░░░░░░░░░░░░░░░   25,000
+- verbose-output  █░░░░░░░░░░░░░░░░░░░   12,000
+```
 
 ### `/leakhound:mcp-audit`
 
@@ -57,6 +64,13 @@ Takes every configured MCP server (user, project, and plugin-bundled) and checks
 ### `/leakhound:plugin-audit`
 
 Same idea for installed plugins: component inventory (skills, commands, agents, hooks, bundled MCP servers), an always-on context estimate, and 30 days of real invocations. Verdicts are `KEEP`, `DISABLE?` with the per-session tokens you'd get back, or `HOOK-ONLY` for hook-carrying plugins whose usage can't be measured from transcripts. When leakhound can't measure something, it says so instead of guessing.
+
+```diff
+- mcp-apps          ░░░░░░░░░░░░░░░░░░░░    0  ~428 tok
+  leakhound-router  ░░░░░░░░░░░░░░░░░░░░    0  ~17 tok  (hook-only)
++ superpowers       ██░░░░░░░░░░░░░░░░░░   41  ~611 tok
++ playwright        ████████████████████  489  ~3 tok
+```
 
 ### `/leakhound:model-audit [cost|balanced|quality]`
 
@@ -76,16 +90,24 @@ Want dollars instead of token counts? Add prices you maintain yourself to `~/.cl
 
 ### `/leakhound:trend`
 
-Are the numbers actually improving? Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`. Trend renders deltas and sparklines over the last 12 runs:
+Are the numbers actually improving? Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`. Trend renders deltas and sparklines over the last 12 runs, and the rows are direction-aware: a falling waste metric is green even though the delta is negative.
 
+```diff
++ mechanicalMsgs       ███▁▁██▅  latest 460      (-322 vs previous)
++ reallocatableTokens  ███▁▁██▃  latest 347,796  (-1,104,525 vs previous)
+  topOutputTokens      ███▁▁███  latest 3,109,773 (+31,626 vs previous)
 ```
-mechanicalMsgs       ███▁▁██▅  latest 460      (−322 vs previous)
-reallocatableTokens  ███▁▁██▃  latest 347,796  (−1,104,525 vs previous)
-```
+
+It closes with a verdict chip: 🟢 trending leaner, 🔴 trending heavier, or ⚪ flat.
 
 ### `/leakhound-router:router [on|off|status]`
 
 This is the automatic part, and it ships as a separate plugin on purpose: if you only want the audits, you never pay the hook's per-prompt cost. When the router is on, a small hook classifies each prompt (mechanical, search, or complex) and injects a directive telling Claude to run cheap work through a haiku subagent, following your saved weight.
+
+```
+🟢 Router ON · weight balanced
+mechanical ✅  search —  complex —
+```
 
 One thing it cannot do, and you should know this before installing: no hook can change the session model. That's a platform rule, not a leakhound choice. What the router moves is the execution work, which is where most of the burn actually is. The main model keeps coordinating.
 
