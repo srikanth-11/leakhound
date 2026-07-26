@@ -227,8 +227,10 @@ One thing it cannot do, worth knowing before you install: no hook can change the
 
 ```
 🟢 Router ON · weight cost
-mechanical ✅  search ✅  complex —
+mechanical ✅  search ✅  complex stays on session model
 ```
+
+✅ means prompts of that class get the cheap-subagent directive; anything else stays on your full-strength session model, and the matrix says so in words.
 
 **What happens next:** you type "rename getUser to fetchUser everywhere". The hook classifies it mechanical and quietly tells Claude to do the renaming in a haiku subagent. Your expensive session model writes a couple of coordination lines instead of forty edit calls. You type "design the caching layer" and the hook stays silent, because that one deserves the big model. If a prompt gets misrouted, the directive includes an escape hatch: Claude escalates back to the session model rather than shipping a worse answer.
 

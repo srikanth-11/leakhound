@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## [0.8.0] — 2026-07-26
 
+### Changed
+
+- Router status matrix spells out non-routed classes in words ("complex stays on session model") instead of a bare dash glyph (leakhound-router 0.3.3)
+
+
 ### Added
 
 - leakhound-guard, a third opt-in plugin: waste firewall on the Read tool. Denies whole-file reads of lockfiles/build artifacts (>~20k est tokens) with a Grep redirect, and full re-reads of files unchanged since already read this session (mtime-checked). Offset/limit reads always pass; a third identical attempt always passes (circuit breaker — no hard loops). `/leakhound-guard:guard` for status and per-rule toggles
