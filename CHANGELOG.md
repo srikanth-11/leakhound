@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.7.0] — 2026-07-26
+
+### Added
+
+- Live statusline (`/leakhound:live`): real-time context meter in the terminal — context size with pressure colors and "compaction near" warning, direction arrow, last-turn output tokens. Tail-reads the live transcript only; thresholds tunable via leakhound.json `live` key
+
 ## [0.6.0] — 2026-07-26
 
 ### Added

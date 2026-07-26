@@ -7,7 +7,7 @@
     {
       "name": "leakhound",
       "source": "./",
-      "description": "Token-waste forensics: /waste, /mcp-audit, /plugin-audit, /model-audit, /trend — causes, verdicts, and exact fixes. No hooks, no per-prompt cost.",
+      "description": "Token-waste forensics: /waste, /mcp-audit, /plugin-audit, /model-audit, /trend and the /live statusline meter — causes, verdicts, and exact fixes. No hooks, no per-prompt cost.",
       "category": "productivity"
     },
     {

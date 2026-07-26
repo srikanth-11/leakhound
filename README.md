@@ -243,6 +243,18 @@ Tune classification with your own regex patterns (JSON needs double backslashes;
 }
 ```
 
+### Command: `/leakhound:live`
+
+**What it does:** sets up a live statusline so the context meter runs in your terminal all the time, not just when you audit:
+
+```
+🐕 ctx 764k↑ · +2.1k out
+```
+
+Current context size (green, yellow, or red by pressure — red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
+
+**Usage:** `/leakhound:live` walks you through it: copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet — you approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json`: `"live": {"yellow": 500000, "red": 800000}`.
+
 ## Configuration
 
 All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`):
