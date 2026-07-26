@@ -1,0 +1,36 @@
+name: False verdict
+description: An audit told you to disable something you use, or kept something dead
+labels: [verdict]
+body:
+  - type: dropdown
+    id: which
+    attributes:
+      label: Which verdict was wrong
+      options:
+        - DISABLE? on something I actively use
+        - KEEP on something that is definitely dead
+        - HOOK-ONLY seems wrong
+        - model-audit flagged the wrong thing
+    validations:
+      required: true
+  - type: input
+    id: subject
+    attributes:
+      label: The server or plugin in question
+      placeholder: e.g. MCP server "postgres" / plugin "docs-toolkit"
+    validations:
+      required: true
+  - type: textarea
+    id: row
+    attributes:
+      label: The exact row leakhound printed
+      description: Copy the one line from the report (verdict, name, count, tokens)
+    validations:
+      required: true
+  - type: textarea
+    id: reality
+    attributes:
+      label: How you actually use it
+      description: Roughly how often, and through what (slash command, skill, hook, MCP tool)? Hook-driven usage is invisible to transcripts, which is what HOOK-ONLY exists for.
+    validations:
+      required: true

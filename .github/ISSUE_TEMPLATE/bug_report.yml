@@ -1,0 +1,48 @@
+name: Bug report
+description: Something crashed, rendered wrong, or behaved unexpectedly
+labels: [bug]
+body:
+  - type: dropdown
+    id: command
+    attributes:
+      label: Which command or component
+      options:
+        - /leakhound:waste
+        - /leakhound:mcp-audit
+        - /leakhound:plugin-audit
+        - /leakhound:model-audit
+        - /leakhound:trend
+        - /leakhound:live (statusline)
+        - /leakhound-router:router (hook)
+        - /leakhound-guard:guard (hook)
+        - other / not sure
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Plugin versions
+      description: Paste the leakhound lines from `claude plugin list`
+      placeholder: leakhound 0.7.3, leakhound-router 0.3.3, leakhound-guard 0.8.0
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Node version
+      placeholder: Windows 11 / node 20.18.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened vs what you expected
+      description: Error text or wrong output, trimmed to the relevant part. Please don't paste transcript content.
+    validations:
+      required: true
+  - type: input
+    id: selftest
+    attributes:
+      label: Selftest result
+      description: Run the matching script with --selftest (e.g. `node <cache path>/scripts/waste.js --selftest`) and paste the last line
+      placeholder: selftest OK
