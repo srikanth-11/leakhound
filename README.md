@@ -228,7 +228,7 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 🟢 trending leaner
 
-**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect.
+**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect — and the report closes with an action line per worsened metric pointing at the command whose fresh run carries the fix (waste up: run /waste for its now/say/adopt lines; disables up: run the audit for the exact disable command).
 
 ### Command: `/leakhound-router:router [on|off|status]`
 

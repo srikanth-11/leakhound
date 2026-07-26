@@ -16,3 +16,4 @@ Show audit trends.
          topOutputTokens      ███▁▁███  latest 3,109,773 (+31,626 vs previous)
        ```
 4. Close with a one-line verdict chip: `🟢 trending leaner` if any lower-is-better metric improved and none worsened, `🔴 trending heavier` if any worsened, `⚪ flat` otherwise — then the `note` verbatim. No raw JSON.
+5. When the chip is 🔴: add one action line per worsened lower-is-better metric — `→ <metric> up <delta>: run /leakhound:<tool>` where `<tool>` is the tool block the metric came from (its fresh run carries the current fixes: waste findings ship now/say/adopt lines, audits ship disable commands and delegation suggestions). Never leave a red chip as the last word.

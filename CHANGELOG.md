@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.4] — 2026-07-26
+
+### Changed
+
+- A red /trend verdict now closes with an action line per worsened metric, pointing at the command whose fresh run carries the fix. Closed the last data-without-action surface: every red anywhere in leakhound now names a next step
+
 ## [0.8.3] — 2026-07-26
 
 ### Added
