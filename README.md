@@ -22,7 +22,7 @@ Leakhound answers all three, locally, with zero dependencies. The audits themsel
 + playwright    ████████████████████  360  2026-07-23
 ```
 
-Red rows are dead weight, green rows earn their keep. Output looks like this in your terminal too.
+That's `/leakhound:mcp-audit` on the machine leakhound was built on. Red rows are dead weight, green rows earn their keep. Output looks like this in your terminal too.
 
 ## Installation
 
@@ -197,7 +197,7 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 ### Command: `/leakhound:trend`
 
-**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl` — /waste included, which logs findings, waste tokens, and compaction count per run; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
+**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`, /waste included, which logs findings, waste tokens, and compaction count per run; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
 
 **Usage:** `/leakhound:trend`
 
@@ -205,30 +205,30 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 **waste** (8 runs)
 ```diff
-+ wasteTokens  █▆▅▃▂▁    latest 4,100    (-9,600 vs previous)
-+ compactions  █▄▄▁▁▁    latest 0        (-1 vs previous)
++ wasteTokens  █▇▅▄▃▂▃▁  latest 4,100    (-9,600 vs previous)
++ compactions  █▅▅▁▅▅▅▁  latest 0        (-1 vs previous)
 ```
 
 **plugin-audit** (6 runs)
 ```diff
-+ disable            █▅▅▁▁     latest 0        (-3 vs previous)
-+ reclaimableTokens  █▅▅▁▁     latest 0        (-1,260 vs previous)
++ disable            █▆▆▃█▁    latest 0        (-3 vs previous)
++ reclaimableTokens  ███▆█▁    latest 0        (-1,260 vs previous)
 ```
 
 **model-audit** (7 runs)
 ```diff
-+ mechanicalMsgs       ███▅▃▂    latest 210      (-95 vs previous)
-+ reallocatableTokens  ███▅▃▂    latest 118,000  (-64,000 vs previous)
++ mechanicalMsgs       █▇▆▅▄▃▁   latest 210      (-95 vs previous)
++ reallocatableTokens  █▇▆▅▄▃▁   latest 118,000  (-64,000 vs previous)
 ```
 
 **mcp-audit** (6 runs)
 ```diff
-  totalCalls  ▃▄▄▅▅     latest 402      (+23 vs previous)
+  totalCalls  ▁▂▅▆▇█    latest 402      (+23 vs previous)
 ```
 
 🟢 trending leaner
 
-**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect — and the report closes with an action line per worsened metric pointing at the command whose fresh run carries the fix (waste up: run /waste for its now/say/adopt lines; disables up: run the audit for the exact disable command).
+**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect, and the report closes with an action line per worsened metric pointing at the command whose fresh run carries the fix (waste up: run /waste for its now/say/adopt lines; disables up: run the audit for the exact disable command).
 
 ### Command: `/leakhound-router:router [on|off|status]`
 
@@ -334,7 +334,7 @@ Settings live in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/le
 | `live` | `{yellow, red}` context thresholds in tokens | 500k / 800k | statusline badge colors |
 | `guard` | `"off"` or `{artifacts, rereads}` booleans | on when installed | waste firewall rules |
 
-Two other local files exist: `~/.claude/leakhound-history.jsonl` (the audit summaries /trend reads) and, when the guard is installed, per-session read memory under `~/.claude/.leakhound-guard/` (auto-pruned after a day).
+Two other local files exist: `~/.claude/leakhound-history.jsonl` (summary lines appended by /waste and the three audits; /trend reads them) and, when the guard is installed, per-session read memory under `~/.claude/.leakhound-guard/` (auto-pruned after a day).
 
 ## Privacy
 

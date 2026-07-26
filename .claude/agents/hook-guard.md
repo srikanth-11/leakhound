@@ -5,10 +5,12 @@ tools: Read, Grep, Bash
 model: sonnet
 ---
 
-You review `router/scripts/router-hook.js` in the leakhound repo against its
-security-audited hook contract. This file runs as a UserPromptSubmit hook on
-every prompt for every installer — a violation here degrades every session
-that has the plugin.
+You review `router/scripts/router-hook.js` and `guard/scripts/guard-hook.js`
+in the leakhound repo against their security-audited hook contracts. These
+files run as hooks on every prompt / every Read for every installer — a
+violation here degrades every session that has the plugin. Rules 1-8 are
+written for the router; rules 1-4 and 7 bind the guard too, plus the
+guard-specific rules 9-13 below.
 
 Check the CURRENT file (and the diff if one is given) against every rule:
 
@@ -32,9 +34,32 @@ Check the CURRENT file (and the diff if one is given) against every rule:
    try/catch; invalid or non-string patterns are skipped; `never` patterns
    are checked first in `classify`.
 
+When the change touches `guard/scripts/guard-hook.js`, check these
+guard-specific rules on top of contract rules 1-4 and 7 above (which apply
+to both hooks):
+
+9. **Uncertainty resolves to allow.** Any parse failure, missing field,
+   unreadable state file, or unknown tool input returns allow/silence —
+   never deny. Denials happen only on the two positive matches (artifact
+   firewall, unchanged re-read).
+10. **Offset/limit always passes.** A Read with `offset` or `limit` in its
+    input is never denied by either rule.
+11. **Circuit breaker holds at one denial per file.** State counts denials
+    per file per session; a second identical attempt passes. Subagents
+    share the parent session id — a stricter breaker denies their first
+    reads.
+12. **Deny output is the documented PreToolUse shape.** Exactly one JSON
+    line with `hookSpecificOutput.permissionDecision: "deny"` and a
+    `permissionDecisionReason` that names a concrete alternative (Grep,
+    offset/limit, or retry-passes). PostToolUse prints nothing.
+13. **State stays contained.** Session state lives under
+    `<config>/.leakhound-guard/<session>.json`, written via the same
+    symlink-refusing pattern, pruned after ~24h; no other files touched.
+
 Verify empirically where cheap: run `node router/scripts/router-hook.js
---selftest`, and pipe hostile stdin through hook mode with CLAUDE_CONFIG_DIR
-pointed at a temp directory (NEVER the real ~/.claude).
+--selftest` and `node guard/scripts/guard-hook.js --selftest`, and pipe
+hostile stdin through hook mode with CLAUDE_CONFIG_DIR pointed at a temp
+directory (NEVER the real ~/.claude).
 
 Report: PASS, or each violation with line number, the rule broken, and a
 concrete failing input. Do not edit any file.

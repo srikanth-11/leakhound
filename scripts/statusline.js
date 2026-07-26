@@ -95,16 +95,19 @@ function main() {
 
 function selftest() {
   const assert = require('assert');
-  const mk = (inp, cr, out) => JSON.stringify({
+  const mk = (inp, cr, out, sidechain) => JSON.stringify({
     type: 'assistant',
+    isSidechain: sidechain === true,
     message: { id: 'x', usage: { input_tokens: inp, cache_read_input_tokens: cr, cache_creation_input_tokens: 0, output_tokens: out } }
   });
-  // first line is treated as partial and skipped — pad with a junk line
-  const text = ['PARTIAL', mk(10000, 400000, 800), mk(12000, 600000, 2100)].join('\n');
+  // first line is treated as partial and skipped — pad with a junk line.
+  // The trailing sidechain line (a subagent's small context) must not become
+  // ctx/prev/lastOutput: the meter tracks the main conversation only.
+  const text = ['PARTIAL', mk(10000, 400000, 800), mk(12000, 600000, 2100), mk(500, 3000, 999, true)].join('\n');
   const s = tailStats(text);
-  assert.equal(s.ctx, 612000, 'latest context proxy');
-  assert.equal(s.prev, 410000, 'previous proxy for the arrow');
-  assert.equal(s.lastOutput, 2100, 'last-turn output; sidechain line ignored');
+  assert.equal(s.ctx, 612000, 'latest context proxy comes from the main line, not the sidechain');
+  assert.equal(s.prev, 410000, 'previous proxy for the arrow skips the sidechain line');
+  assert.equal(s.lastOutput, 2100, 'last-turn output ignores the sidechain line');
 
   const th = { yellow: 500000, red: 800000 };
   const b = badge(s, th);

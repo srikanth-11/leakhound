@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.5] — 2026-07-26
+
+### Fixed
+
+- Statusline selftest now actually exercises the 0.8.2 sidechain filter: a subagent usage line in the fixture must not become the meter's context, arrow, or last-output (previously the assert message claimed coverage the fixture didn't have)
+- README trend example sparklines match their stated run counts glyph-for-glyph, and every previous-vs-latest pair is consistent with its printed delta
+- README names /waste as a history-file writer in the Configuration section and captions the hero example as /leakhound:mcp-audit output
+- hook-guard reviewer agent now carries the guard hook's contract (allow-on-uncertainty, offset/limit passes, one-denial breaker, deny shape, state containment), not just the router's
+
 ## [0.8.4] — 2026-07-26
 
 ### Changed
