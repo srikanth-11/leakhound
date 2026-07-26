@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.3] — 2026-07-26
+
+### Added
+
+- /waste now appends a summary line (findings count, waste tokens, compactions) to `~/.claude/leakhound-history.jsonl`, so /trend charts waste-per-session over time — including whether compactions are becoming more or less frequent. Trend rendering treats all three as lower-is-better
+
 ## [0.8.2] — 2026-07-26
 
 ### Fixed

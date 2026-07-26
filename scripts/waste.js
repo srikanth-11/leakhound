@@ -362,6 +362,14 @@ function pickTranscripts(dir, all) {
   return files.filter(f => f.mtime >= cutoff);
 }
 
+function historySummary(out) {
+  return {
+    findings: out.findings.length,
+    wasteTokens: out.findings.reduce((sum, f) => sum + (f.estTokens || 0), 0),
+    compactions: out.compactions
+  };
+}
+
 function main() {
   const args = process.argv.slice(2);
   const all = args.includes('--all') || args.includes('all');
@@ -410,6 +418,19 @@ function main() {
   out.findings.sort((a, b) => b.estTokens - a.estTokens);
   out.findings = out.findings.slice(0, 10);
   console.log(JSON.stringify(out, null, 2));
+
+  // Append history (silent-fail, never blocks output)
+  try {
+    const historyLine = JSON.stringify({
+      ts: new Date().toISOString(),
+      tool: 'waste',
+      summary: historySummary(out)
+    });
+    const historyPath = path.join(configDir(), 'leakhound-history.jsonl');
+    let isSymlink = false;
+    try { isSymlink = fs.lstatSync(historyPath).isSymbolicLink(); } catch {}
+    if (!isSymlink) fs.appendFileSync(historyPath, historyLine + '\n');
+  } catch {}
 }
 
 function fixtureLines() {
@@ -530,6 +551,15 @@ function selftest() {
   assert(cw, 'post-compaction re-read produces a compaction-waste finding');
   assert.equal(cw.estTokens, 200, 'only the post-compaction re-read tokens are attributed');
   assert(cw.description.includes('1x'), 'description carries the compaction count');
+
+  // history summary: what a waste run appends to leakhound-history.jsonl
+  const hs = historySummary({
+    findings: [{ estTokens: 6000 }, { estTokens: 500 }, {}],
+    compactions: 2
+  });
+  assert.equal(hs.findings, 3, 'history counts findings');
+  assert.equal(hs.wasteTokens, 6500, 'history sums estTokens, missing treated as 0');
+  assert.equal(hs.compactions, 2, 'history carries compaction count');
 
   // baselines
   assert.equal(medianOf([5, 1, 3]), 3, 'medianOf odd');

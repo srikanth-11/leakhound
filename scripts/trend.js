@@ -100,6 +100,8 @@ function selftest() {
     JSON.stringify({ ts: '2026-07-25T10:05:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, totalCalls: 22 } }),
     JSON.stringify({ ts: '2026-07-25T10:10:00Z', tool: 'mcp-audit', summary: { servers: 5, disable: 1, totalCalls: 25 } }),
     JSON.stringify({ ts: '2026-07-25T10:15:00Z', tool: 'plugin-audit', summary: { plugins: 8, disable: 2, reclaimableTokens: 5000 } }),
+    JSON.stringify({ ts: '2026-07-25T10:20:00Z', tool: 'waste', summary: { findings: 4, wasteTokens: 31000, compactions: 2 } }),
+    JSON.stringify({ ts: '2026-07-25T10:25:00Z', tool: 'waste', summary: { findings: 2, wasteTokens: 7000, compactions: 1 } }),
     'not valid json',
     ''
   ];
@@ -127,6 +129,12 @@ function selftest() {
   // Check sparklines exist
   assert(tools['mcp-audit'].spark.totalCalls, 'mcp-audit has totalCalls sparkline');
   assert.equal(tools['mcp-audit'].spark.totalCalls.length, 3, 'mcp-audit sparkline has 3 chars (3 runs)');
+
+  // waste entries flow through the generic pipeline (v0.8.3)
+  assert.equal(tools['waste'].runs, 2, 'waste has 2 runs');
+  assert.equal(tools['waste'].latest.summary.wasteTokens, 7000, 'waste latest wasteTokens');
+  assert.equal(tools['waste'].deltas.wasteTokens, -24000, 'waste delta wasteTokens');
+  assert.equal(tools['waste'].deltas.compactions, -1, 'waste delta compactions');
 
   console.log('selftest OK');
 }

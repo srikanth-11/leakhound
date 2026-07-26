@@ -197,11 +197,17 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 ### Command: `/leakhound:trend`
 
-**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
+**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl` — /waste included, which logs findings, waste tokens, and compaction count per run; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
 
 **Usage:** `/leakhound:trend`
 
 **Example run.** Two weeks after acting on the audits above:
+
+**waste** (8 runs)
+```diff
++ wasteTokens  █▆▅▃▂▁    latest 4,100    (-9,600 vs previous)
++ compactions  █▄▄▁▁▁    latest 0        (-1 vs previous)
+```
 
 **plugin-audit** (6 runs)
 ```diff
