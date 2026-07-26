@@ -300,7 +300,7 @@ function selftest() {
   // rendered description or break the diff-fenced output with a stray line break.
   const dirtyPath = 'x'.repeat(500) + '\n' + 'y'.repeat(50);
   const desc = clean(dirtyPath + ' read 3 times');
-  assert(desc.length <= 260, 'clean() caps description length');
+  assert(desc.length <= 200, 'clean() caps description length at 200');
   assert(!desc.includes('\n'), 'clean() strips embedded newlines');
 
   console.log('selftest OK');

@@ -26,7 +26,18 @@ function safeWrite(filePath, content) {
       if (fs.lstatSync(filePath).isSymbolicLink()) return;
     } catch {}
     const tmp = filePath + '.tmp';
-    fs.writeFileSync(tmp, content);
+    // 'wx' (O_CREAT|O_EXCL) refuses to follow a pre-planted symlink at the tmp path;
+    // on EEXIST remove the stale tmp (or planted link) and retry once.
+    try {
+      fs.writeFileSync(tmp, content, { flag: 'wx' });
+    } catch (e) {
+      if (e && e.code === 'EEXIST') {
+        fs.unlinkSync(tmp);
+        fs.writeFileSync(tmp, content, { flag: 'wx' });
+      } else {
+        throw e;
+      }
+    }
     fs.renameSync(tmp, filePath);
   } catch {}
 }
