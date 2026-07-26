@@ -16,6 +16,7 @@ Audit model fit for the current project.
          claude-fable-5   top  █████████████████░░░  1,407,295 out  251,945 in  $35.18
        ```
    - Bucket distribution: one line, 4 proportional segments out of 20 blocks with distinct fills, labeled. Example: `mechanical ████ search ███ prose ██ complex ███████████`.
+   - If `baseline` is non-null: one line — `mechanical share: <overallSharePct>% overall vs <medianMechanicalSharePct>% typical session (<sessions> sessions)`.
    - Delegation chip (if `delegation.events` > 0): `🟢 Delegation: N events, M% to cheaper models` when compliancePct >= 70, else `🔴` with the same text.
    - Flags block (when flags exist): fenced `diff` block, every flag row `-` prefixed (renders red): tier+bucket, bar over estOutputTokens, tokens, `$` when present. One suggestion line per flag beneath the block. If no flags: render `+ model split looks right for this weight` in a `diff` fence.
    - Closing: reallocatable output tokens (labeled estimate), `$` when `reallocatableUSD` present, and the `note` field verbatim.

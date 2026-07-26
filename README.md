@@ -10,7 +10,7 @@ Token-waste forensics for Claude Code. Leakhound finds out where your tokens act
 
 Existing tools tell you how much you spent. ccusage gives totals, `/context` gives a snapshot. Neither answers the questions that decide whether your plan survives the afternoon: why did this session burn 400k tokens, which of your MCP servers and plugins are dead weight, and is an expensive model doing work a cheap one handles fine?
 
-Leakhound answers all three, locally, with zero dependencies. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
+Leakhound answers all three, locally, with zero dependencies. The audits themselves are plain scripts, not model calls — running leakhound costs roughly nothing, which matters when some audit tools dispatch six or more model calls to tell you you're spending too much. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
 
 🟢 5 keep · 🔴 3 disable candidates
 
@@ -52,6 +52,11 @@ Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every self
 | Retry loops | same command failed 4 times | stop after 2, change approach |
 | Verbose output | 12k-token test log | quiet flags, tail |
 | Cache churn | prompt cache rebuilding | avoid mid-session config changes |
+| Compaction waste | context squashed, files re-read after | /clear between tasks, split long sessions |
+
+It also warns before the damage: a context-pressure signal fires when recent
+input is averaging high enough that compaction is coming, and with `all` it
+compares your latest session against your own 30-day median.
 
 **Usage:** `/leakhound:waste` for the latest session, `/leakhound:waste all` for the last 30 days.
 
@@ -246,6 +251,34 @@ node scripts/trend.js
 ```
 
 Every script has a `--selftest` flag. CI runs all six on ubuntu, macos, and windows.
+
+## How it compares
+
+Other good tools live in this space; they make different trade-offs.
+
+**Argus** (VS Code extension) has a genuinely nice live dashboard with
+dependency graphs and watches your session as it runs. It requires VS Code,
+so terminal users get nothing, and its findings are descriptive — no fix
+commands attached. Its pricing table is hardcoded, so unknown models get
+silently priced as Sonnet.
+
+**claude-token-analyzer** (Rust CLI + MCP server) does statistical anomaly
+detection against your own session history, which is clever. It ships no
+Windows binaries, and its output is currently hardcoded to Traditional
+Chinese.
+
+**Token Optimizer** goes furthest: always-on compression hooks that rewrite
+tool output, SQLite storage, an HTML dashboard. The trade-offs are real:
+its audit mode dispatches multiple model calls (the auditor itself costs
+tokens), it edits your files (CLAUDE.md injection), and the license is
+noncommercial.
+
+Leakhound's lane: terminal-native, Windows/macOS/Linux equally, two-command
+setup, audits that cost nothing to run, dead-weight verdicts on MCP servers
+and plugins (nobody else does this), fix commands attached to every finding,
+compaction and pressure detection, personal baselines from your own history,
+and it never rewrites your output or edits your files. MIT licensed. If you
+want a live in-editor dashboard, run Argus alongside — they don't conflict.
 
 ## FAQ
 

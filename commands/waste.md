@@ -13,6 +13,9 @@ Analyze token waste for the current project.
 3. Render a report, nothing else:
    - One header line: which transcript files were analyzed, and note if the newest is the live session (still growing).
    - Totals line: `output ~N tokens, cache writes ~N, cache reads ~N` (all estimates).
+   - If `pressure` is non-null: `🟡 context pressure: recent input averaging ~<avgInput> tokens — compaction likely soon; /clear between tasks helps.`
+   - If `compactions` > 0, mention the count in the header line ("context compacted N times").
+   - If `baseline` is non-null (only with `all`): one line — `latest session output = <latestVsMedian>x your 30-day median (<sessions> sessions)`.
    - Findings visual block (MANDATORY when findings exist — never replace with a plain table): one fenced code block with language `diff`. Every finding is a leak, so every finding row takes a `-` prefix (renders red in most terminals): category, bar, est tokens. Bar = `Math.round(estTokens / max * 20)` `█` chars padded to 20 with `░`. Example:
        ```diff
        - cache-churn     ████████████████████  240,000

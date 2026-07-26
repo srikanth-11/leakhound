@@ -137,6 +137,13 @@ function saveWeight(configPath, w) {
   try { fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2)); } catch {}
 }
 
+// Upper median; used for the personal mechanical-share baseline.
+function medianOf(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 function priceFor(tier, prices) {
   if (!prices || typeof prices !== 'object') return null;
   const v = prices[tier];
@@ -247,6 +254,10 @@ function selftest() {
   assert.equal(loadWeight(cfg), 'cost', 'saved weight round-trips');
   fs.writeFileSync(cfg, '{bad json');
   assert.equal(loadWeight(cfg), 'balanced', 'corrupt file defaults balanced');
+  assert.equal(medianOf([0.5, 0.1, 0.3]), 0.3, 'medianOf odd');
+  assert.equal(medianOf([0.4, 0.1, 0.2, 0.3]), 0.3, 'medianOf even takes the upper median');
+  assert.equal(medianOf([]), 0, 'medianOf empty');
+
   console.log('selftest OK');
 }
 
@@ -291,11 +302,16 @@ function main() {
   }
   const all = [];
   let skippedLines = 0;
+  const sessionShares = []; // per-session mechanical share, for the personal baseline
   for (const f of files) {
     let text;
     try { text = fs.readFileSync(f.full, 'utf8'); } catch { skippedLines++; continue; }
     const { messages, skipped } = parseMessages(text);
     skippedLines += skipped;
+    if (messages.length) {
+      const mech = messages.filter(m => bucketOf(m.tools, m.outputTokens) === 'mechanical').length;
+      sessionShares.push(mech / messages.length);
+    }
     all.push(...messages);
   }
   const rows = all.map(m => ({
@@ -329,6 +345,12 @@ function main() {
   const reallocatableTokens = flags.filter(f => f.tier !== 'cheap').reduce((s, f) => s + f.estOutputTokens, 0);
   const reallocatableInputTokens = flags.filter(f => f.tier !== 'cheap').reduce((s, f) => s + f.estInputTokens, 0);
   const delegation = delegationOf(all);
+  const totalMsgs = rows.length;
+  const baseline = sessionShares.length >= 5 && totalMsgs > 0 ? {
+    sessions: sessionShares.length,
+    medianMechanicalSharePct: Math.round(medianOf(sessionShares) * 100),
+    overallSharePct: Math.round(buckets.mechanical / totalMsgs * 100)
+  } : null;
   const out = {
     weight,
     windowDays: 30,
@@ -339,6 +361,7 @@ function main() {
     reallocatableTokens,
     reallocatableInputTokens,
     delegation,
+    baseline,
     skippedLines,
     note: 'Buckets are tool-pattern heuristics; mechanical additionally requires modest output (<1500 est tokens) — edit-only tool calls with heavy output are classified complex, since heavy output signals real drafting, not a mechanical tweak. Output tokens are the spend proxy. Input tokens are mostly cache writes/reads, a secondary signal. Delegation counts Task/Agent tool_use calls by target model tier; unspecified means inherited (no model set) or an explicit top-tier model. The session model changes only via /model — the automatic lever is subagent delegation per the leakhound skill. USD figures use prices you maintain in leakhound.json and only appear when configured.'
   };
