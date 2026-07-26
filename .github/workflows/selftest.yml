@@ -18,4 +18,6 @@ jobs:
       - run: node scripts/model-audit.js --selftest
       - run: node scripts/plugin-audit.js --selftest
       - run: node scripts/trend.js --selftest
+      - run: node scripts/statusline.js --selftest
       - run: node router/scripts/router-hook.js --selftest
+      - run: node guard/scripts/guard-hook.js --selftest
