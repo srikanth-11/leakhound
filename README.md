@@ -271,6 +271,39 @@ Escape hatches are built in, no hard loops possible: offset/limit reads always p
 🛡 Guard ON · artifacts ✅ · rereads ✅
 ```
 
+## Reading the output
+
+Every screen uses the same small vocabulary. Once you can read one, you can read them all.
+
+**Chips** open most reports:
+
+| Chip | Means |
+|---|---|
+| 🟢 | healthy: KEEP verdicts, improving trend, router/guard active |
+| 🔴 | act on this: DISABLE? candidates, worsening trend, low delegation |
+| 🟡 | attention, not action: hook-only rows, context pressure building |
+| ⚪ | neutral: flat trend, something switched off |
+
+**Bars** like `████████░░░░░░░░░░░░` are 20 blocks scaled to the largest row in that table. They show proportion, not absolute size; the number next to the bar is the real value.
+
+**Every token number is an estimate.** Text is counted as characters divided by four, which is why figures carry a `~`. Close enough to rank leaks and measure progress, not an invoice.
+
+**The statusline badge**, piece by piece. Take `🐕 ctx 839k↑ compaction near · +715 out`:
+
+| Piece | Means |
+|---|---|
+| `ctx 839k` | tokens the model processed on the last turn: your fresh input plus the whole cached conversation prefix plus cache writes. This is the weight of the session, and it can read far above the raw context window because cached tokens count every turn |
+| color | green is comfortable, yellow is heavy, red means compaction territory. Thresholds are yours to tune (`live` key below) |
+| `↑ ↓ →` | direction against the previous turn: growing, shrinking, flat |
+| `compaction near` | the red-zone warning. Claude Code is close to squashing your history into a summary, after which files get re-read from scratch at full price. Finish the task, then `/clear` |
+| `+715 out` | tokens Claude generated on that turn. Output is the expensive direction, so this is the number your limits actually feel |
+
+**Audit columns.** In `/waste`, each red row is category, bar, estimated tokens lost, then what happened; the three-part fix below each row is `now` (do this), `say` (paste this at Claude), `adopt` (the habit). In `/mcp-audit` and `/plugin-audit`, the count column is real invocations in the last 30 days from your transcripts, `never` means zero, and the `~N tok` column on plugins is what their names and descriptions cost your context every single session, used or not.
+
+**model-audit specifics.** `out` is tokens generated, the true spend proxy. `in` is input, mostly cache traffic, a secondary signal. The buckets line splits messages by what they did: mechanical edits, searching, prose, complex work. Delegation counts subagent launches and what share went to cheaper models; low percent means expensive models are doing the delegated grunt work too. Reallocatable is the output spent on flagged mismatches, the tokens a cheaper model could have produced.
+
+**trend specifics.** Sparklines (`▁▃▅█`) plot up to the last 12 audit runs, scaled to their own min and max. Rows are direction-aware: for waste metrics, a falling number is good, so a negative delta renders green. The closing chip is the verdict: 🟢 trending leaner, 🔴 trending heavier, ⚪ flat.
+
 ## Configuration
 
 All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`):
@@ -281,10 +314,12 @@ All state lives in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/
 | `router` | `on` \| `off` | `off` | router hook |
 | `routerPatterns` | `{mechanical, search, never}` regex arrays | none | router classification |
 | `prices` | `{top, mid, cheap}` USD per M output tokens | none | model-audit dollar figures |
+| `live` | `{yellow, red}` context thresholds in tokens | 500k / 800k | statusline badge colors |
+| `guard` | `"off"` or `{artifacts, rereads}` booleans | on when installed | waste firewall rules |
 
 ## Privacy
 
-Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it: the whole thing is five small plain-Node scripts, read them.
+Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it: the whole thing is eight small plain-Node scripts, read them.
 
 ## How it works
 
@@ -298,12 +333,12 @@ node scripts/plugin-audit.js
 node scripts/trend.js
 ```
 
-Every script has a `--selftest` flag. CI runs all six on ubuntu, macos, and windows.
+Every script has a `--selftest` flag. CI runs all eight on ubuntu, macos, and windows.
 
 ## FAQ
 
 **Why not just switch the model automatically?**
-Can't be done. No Claude Code hook can change the session model; we checked the hook output schema before building this. Leakhound does the two things that are possible: audits that tell you what to change, and a router that moves execution work to cheaper subagents on its own.
+Can't be done. No Claude Code hook can change the session model; we checked the hook output schema before building this. Leakhound does the three things that are possible: audits that tell you what to change, a router that moves execution work to cheaper subagents, and a guard that blocks wasteful reads outright.
 
 **Will it tell me to disable something I actually use?**
 It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
