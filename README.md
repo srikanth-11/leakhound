@@ -63,7 +63,7 @@ compares your latest session against your own 30-day median.
 
 **Example run.** A long session that refactored an API layer comes back like this:
 
-Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k tokens — compaction likely soon; /clear between tasks helps.
+Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k tokens, so compaction is likely soon; /clear between tasks helps.
 
 ```diff
 - compaction-waste ████████████████████  41,200   context compacted 2x; 5 pre-compaction file read(s) repeated after
@@ -78,11 +78,11 @@ Estimated recoverable: ~133,300 tokens.
 With `all`, a baseline line appears once you have 5+ sessions of history:
 `latest session output = 2.4x your 30-day median (11 sessions)`
 
-Every finding ships a three-part fix — an immediate action, the exact prompt to paste at Claude, and the habit that prevents a repeat:
+Every finding ships a three-part fix: an immediate action, the exact prompt to paste at Claude, and the habit that prevents a repeat:
 
-> **compaction-waste** — now: `/clear` after finishing each task · say: *"This session compacted 2x and re-bought 5 file reads; after each completed task, run /clear before the next one."* · adopt: split marathon work across sessions
+> **compaction-waste** · now: `/clear` after finishing each task · say: *"This session compacted 2x and re-bought 5 file reads; after each completed task, run /clear before the next one."* · adopt: split marathon work across sessions
 >
-> **verbose-output** — now: re-run with `--reporter=dot` · say: *"When running `npm test`, use --reporter=dot and tail long output."* · adopt: quiet flags by default
+> **verbose-output** · now: re-run with `--reporter=dot` · say: *"When running `npm test`, use --reporter=dot and tail long output."* · adopt: quiet flags by default
 
 The quiet flag is looked up from the actual command that was noisy (npm/jest, pytest, cargo, playwright, go test, gradle all covered), and lockfile reads get their own rule: Grep-only, never whole.
 
@@ -95,7 +95,7 @@ It closes with a prioritized action plan (top 3 by tokens) and a paste-ready blo
 - Split long work across sessions; /clear between tasks to avoid context compaction.
 ```
 
-Paste that into the project's CLAUDE.md once and the waste class dies permanently. Leakhound never edits your files itself — it hands you the block.
+Paste that into the project's CLAUDE.md once and the waste class dies permanently. Leakhound never edits your files itself; it hands you the block.
 
 The baseline line stays your sanity check: 2.4x your own median means this session was unusual, not your normal. A clean session gets a single green line instead.
 
@@ -172,7 +172,7 @@ Your choice persists, and the router uses the same weight. The audit also report
 
 Buckets: `mechanical █████ search ███ prose ██ complex ██████████`
 
-Mechanical share: 24% overall vs 15% in your typical session (9 sessions) — this month leaned unusually mechanical.
+Mechanical share: 24% overall vs 15% in your typical session (9 sessions), so this month leaned unusually mechanical.
 
 🔴 Delegation: 41 events, 22% to cheaper models
 
@@ -252,16 +252,16 @@ Tune classification with your own regex patterns (JSON needs double backslashes;
 🐕 ctx 764k↑ · +2.1k out
 ```
 
-Current context size (green, yellow, or red by pressure — red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
+Current context size (green, yellow, or red by pressure; red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
 
-**Usage:** `/leakhound:live` walks you through it: copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet — you approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json`: `"live": {"yellow": 500000, "red": 800000}`.
+**Usage:** `/leakhound:live` walks you through it: copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet. You approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json`: `"live": {"yellow": 500000, "red": 800000}`.
 
 ### Command: `/leakhound-guard:guard [on|off|status]`
 
 **What it does:** the waste firewall, a separate opt-in plugin. Where `/waste` reports leaks after the fact, the guard referees Read calls before they cost anything:
 
-- **artifacts** — a whole-file read of a lockfile or build artifact over ~20k est tokens is denied with a redirect: *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
-- **rereads** — a full re-read of a file unchanged since it was already read this session is denied: reference the earlier read instead. A changed file always passes (mtime-checked).
+- **artifacts**: a whole-file read of a lockfile or build artifact over ~20k est tokens is denied with a redirect: *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
+- **rereads**: a full re-read of a file unchanged since it was already read this session is denied, with a pointer back to the earlier read. A changed file always passes (mtime-checked).
 
 Escape hatches are built in, no hard loops possible: offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten — reads are only refereed, and every denial explains the cheaper alternative.
 
@@ -288,7 +288,7 @@ Everything runs locally. No network calls, no telemetry, zero npm dependencies. 
 
 ## How it works
 
-Five zero-dependency Node scripts. Four parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. The fifth is the router hook. Command markdown renders their JSON. You can run them directly:
+Eight zero-dependency Node scripts across three plugins. Five audits parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. The statusline script tails the live transcript for the meter. The router and guard hooks referee prompts and Read calls. Command markdown renders the JSON. You can run any of them directly:
 
 ```
 node scripts/waste.js --project-dir /path/to/project
@@ -309,7 +309,7 @@ Can't be done. No Claude Code hook can change the session model; we checked the 
 It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
 
 **What does leakhound itself cost?**
-About 253 always-on tokens for the audit plugin, with zero hooks. The router plugin adds one hook that takes roughly 240ms per prompt. That overhead is the whole reason it's a separate opt-in install.
+About 253 always-on tokens for the audit plugin, with zero hooks. The router adds one hook per prompt, the guard adds a quick check around each Read; both take a couple hundred milliseconds and both are separate installs precisely so you only pay for what you opted into.
 
 ## License
 
