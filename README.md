@@ -60,23 +60,31 @@ compares your latest session against your own 30-day median.
 
 **Usage:** `/leakhound:waste` for the latest session, `/leakhound:waste all` for the last 30 days.
 
-**Example run.** A session that refactored an API layer comes back like this:
+**Example run.** A long session that refactored an API layer comes back like this:
+
+Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k tokens — compaction likely soon; /clear between tasks helps.
 
 ```diff
-- file-reread     ████████████████████  38,400   src/api/routes.ts read 6 times
-- giant-read      ██████████░░░░░░░░░░  30,100   Read package-lock.json returned ~30k tokens
-- retry-loop      ████░░░░░░░░░░░░░░░░  12,700   Bash failed 5x in a row
-- verbose-output  ███░░░░░░░░░░░░░░░░░  10,900   Bash output ~10.9k tokens
+- compaction-waste ████████████████████  41,200   context compacted 2x; 5 pre-compaction file read(s) repeated after
+- file-reread      ██████████████████░░  38,400   src/api/routes.ts read 6 times
+- giant-read       ██████████████░░░░░░  30,100   package-lock.json returned ~30k tokens
+- retry-loop       ██████░░░░░░░░░░░░░░  12,700   Bash failed 5x in a row
+- verbose-output   █████░░░░░░░░░░░░░░░  10,900   Bash output ~10.9k tokens
 ```
 
-Estimated recoverable: ~92,100 tokens.
+Estimated recoverable: ~133,300 tokens.
+
+With `all`, a baseline line appears once you have 5+ sessions of history:
+`latest session output = 2.4x your 30-day median (11 sessions)`
 
 **What you'd do with that:**
 
-1. `file-reread`: tell Claude "stop re-reading routes.ts, reference the earlier read" or ask it to read only the changed section with offset/limit. Biggest single win here.
-2. `giant-read`: lockfiles and build artifacts almost never need a full read. Ask Claude to Grep for the one package it cares about.
-3. `retry-loop`: five identical failures means the approach was wrong at attempt two. Interrupt earlier; the tokens after that were pure loss.
-4. `verbose-output`: test runs should go through quiet flags (`--reporter=dot`, `2>&1 | tail -20`) before they hit the transcript.
+1. `compaction-waste`: the session ran long enough that context got squashed twice and the same files were re-read from scratch. /clear between tasks, or split big jobs across sessions. The pressure warning above is the early version of this finding — act on it and the waste never happens.
+2. `file-reread`: tell Claude "stop re-reading routes.ts, reference the earlier read" or ask it to read only the changed section with offset/limit.
+3. `giant-read`: lockfiles and build artifacts almost never need a full read. Ask Claude to Grep for the one package it cares about.
+4. `retry-loop`: five identical failures means the approach was wrong at attempt two. Interrupt earlier; the tokens after that were pure loss.
+5. `verbose-output`: test runs should go through quiet flags (`--reporter=dot`, `2>&1 | tail -20`) before they hit the transcript.
+6. The baseline line is your sanity check: 2.4x your own median means this session was unusual, not your normal.
 
 A clean session gets a single green line instead.
 
@@ -152,6 +160,8 @@ Your choice persists, and the router uses the same weight. The audit also report
 ```
 
 Buckets: `mechanical █████ search ███ prose ██ complex ██████████`
+
+Mechanical share: 24% overall vs 15% in your typical session (9 sessions) — this month leaned unusually mechanical.
 
 🔴 Delegation: 41 events, 22% to cheaper models
 
