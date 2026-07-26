@@ -263,7 +263,7 @@ Current context size (green, yellow, or red by pressure; red warns "compaction n
 - **artifacts**: a whole-file read of a lockfile or build artifact over ~20k est tokens is denied with a redirect: *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
 - **rereads**: a full re-read of a file unchanged since it was already read this session is denied, with a pointer back to the earlier read. A changed file always passes (mtime-checked).
 
-Escape hatches are built in, no hard loops possible: offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten — reads are only refereed, and every denial explains the cheaper alternative.
+Escape hatches are built in, no hard loops possible: offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten. Reads are only refereed, and every denial explains the cheaper alternative.
 
 **Usage:** installed = on. `/leakhound-guard:guard status`, `off`, or per-rule: `artifacts off`, `rereads off`. State lives in `~/.claude/leakhound.json` under `guard`.
 
