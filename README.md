@@ -357,7 +357,7 @@ Every script has a `--selftest` flag. CI runs all eight on ubuntu, macos, and wi
 ## FAQ
 
 **Why not just switch the model automatically?**
-Can't be done. No Claude Code hook can change the session model, and we checked the hook output schema before building this. Leakhound does the three things that are possible. Audits that tell you what to change, a router that moves execution work to cheaper subagents, and a guard that blocks wasteful reads outright.
+Not from a hook. The hook output schema has no model field, so nothing leakhound installs can change the model mid-session. A gateway like OmniRoute can, by pointing `ANTHROPIC_BASE_URL` at a proxy, but those env vars are read once at startup, so it swaps the model for a whole session rather than per prompt. Leakhound does the three things possible from inside a running session. Audits that tell you what to change, a router that moves execution work to cheaper subagents, and a guard that blocks wasteful reads outright.
 
 **Will it tell me to disable something I actually use?**
 It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
