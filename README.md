@@ -6,12 +6,6 @@
 
 Token-waste forensics for Claude Code. Leakhound finds out where your tokens actually go and hands you the exact command to fix each leak.
 
-## Overview
-
-Usage trackers tell you how much you spent; a snapshot shows how full the context is right now. Neither answers the questions that decide whether your plan survives the afternoon: why did this session burn 400k tokens, which of your MCP servers and plugins are dead weight, and is an expensive model doing work a cheap one handles fine?
-
-Leakhound answers all three, locally, with zero dependencies. The audits themselves are plain scripts, not model calls, so running leakhound costs roughly nothing. And diagnosis is only the start: an optional live meter watches your context in the statusline, an optional router sends mechanical work to cheaper models, and an optional guard blocks wasteful reads before they cost a single token. It started as a fix for one developer's Pro plan dying by lunch; the first audit of the machine it was built on found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
-
 🟢 2 keep · 🔴 3 disable candidates
 
 ```diff
@@ -24,6 +18,12 @@ Leakhound answers all three, locally, with zero dependencies. The audits themsel
 
 That's `/leakhound:mcp-audit` on the machine leakhound was built on. Red rows are dead weight, green rows earn their keep. Output looks like this in your terminal too.
 
+It started as a fix for one developer's Pro plan dying by lunch. The first audit of that machine found 3 dead MCP servers, 6 dead plugins, and about 348,000 expensive output tokens spent on mechanical work.
+
+Usage trackers tell you how much you spent. A snapshot shows how full the context is right now. Neither answers the questions that decide whether your plan survives the afternoon. Why did this session burn 400k tokens? Which of your MCP servers and plugins are dead weight? Is an expensive model doing work a cheap one handles fine?
+
+Leakhound answers all three, locally, with zero dependencies. The audits are plain scripts, not model calls, so running leakhound costs roughly nothing. Diagnosis is only the start. An optional live meter watches your context in the statusline, an optional router sends mechanical work to cheaper models, and an optional guard blocks wasteful reads before they cost a single token.
+
 ## Installation
 
 ```
@@ -31,37 +31,37 @@ That's `/leakhound:mcp-audit` on the machine leakhound was built on. Red rows ar
 /plugin install leakhound@leakhound
 ```
 
-Optional companions, each registering hooks only if you install them:
+Optional companions. Each one registers hooks only if you install it.
 
 ```
 /plugin install leakhound-router@leakhound   # per-prompt model routing
 /plugin install leakhound-guard@leakhound    # waste firewall (blocks waste before it costs)
 ```
 
-Requires Node.js on PATH. Works on Windows, macOS, and Linux; CI runs every selftest on all three.
+Requires Node.js on PATH. Works on Windows, macOS, and Linux. CI runs every selftest on all three.
 
 ## Features
 
-### Command: `/leakhound:waste`
+### `/leakhound:waste`
 
 **What it does:** parses your session transcript (local JSONL) and reports the top token sinks, worst first, each with a fix.
 
 | Finds | Example | Suggested fix |
 |---|---|---|
-| Re-read files | `app.ts` read 5 times | reference the earlier read; offset/limit |
+| Re-read files | `app.ts` read 5 times | reference the earlier read, or use offset/limit |
 | Giant reads | one 25k-token result dump | Grep first, read the slice |
 | Retry loops | same command failed 4 times | stop after 2, change approach |
 | Verbose output | 12k-token test log | quiet flags, trim output |
 | Cache churn | prompt cache rebuilding | avoid mid-session config changes |
 | Compaction waste | context squashed, files re-read after | /clear between tasks, split long sessions |
 
-It also warns before the damage: a context-pressure signal fires when recent
-input is averaging high enough that compaction is coming, and with `all` it
+It also warns before the damage. A context-pressure signal fires when recent
+input is averaging high enough that compaction is coming. With `all` it
 compares your latest session against your own 30-day median.
 
 **Usage:** `/leakhound:waste` for the latest session, `/leakhound:waste all` for the last 30 days.
 
-**Example run.** A long session that refactored an API layer comes back like this:
+**Example run.** A long session that refactored an API layer comes back like this.
 
 Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k tokens, so compaction is likely soon; /clear between tasks helps.
 
@@ -75,18 +75,18 @@ Context compacted 2 times. 🟡 context pressure: recent input averaging ~180k t
 
 Estimated recoverable: ~133,300 tokens.
 
-With `all`, a baseline line appears once you have 5+ sessions of history:
+With `all`, a baseline line appears once you have 5+ sessions of history.
 `latest session output = 2.4x your 30-day median (11 sessions)`
 
-Every finding ships a three-part fix: an immediate action, the exact prompt to paste at Claude, and the habit that prevents a repeat:
+Every finding ships a three-part fix. An immediate action, the exact prompt to paste at Claude, and the habit that prevents a repeat.
 
 > **compaction-waste** · now: `/clear` after finishing each task · say: *"This session compacted 2x and re-bought 5 file reads; after each completed task, run /clear before the next one."* · adopt: split marathon work across sessions
 >
 > **verbose-output** · now: re-run with `--reporter=dot` · say: *"When running `npm test`, use --reporter=dot and trim long output."* · adopt: quiet flags by default
 
-The quiet flag is looked up from the actual command that was noisy (npm/jest, pytest, cargo, playwright, go test, gradle all covered), and lockfile reads get their own rule: Grep-only, never whole.
+The quiet flag is looked up from the actual command that was noisy (npm/jest, pytest, cargo, playwright, go test, gradle all covered), and lockfile reads get their own rule. Grep only, never whole.
 
-It closes with a prioritized action plan (top 3 by tokens) and a paste-ready block that makes the fixes permanent:
+It closes with a prioritized action plan (top 3 by tokens) and a paste-ready block that makes the fixes permanent.
 
 ```markdown
 ## Token discipline (generated by leakhound)
@@ -95,17 +95,17 @@ It closes with a prioritized action plan (top 3 by tokens) and a paste-ready blo
 - Split long work across sessions; /clear between tasks to avoid context compaction.
 ```
 
-Paste that into the project's CLAUDE.md once and the waste class dies permanently. Leakhound never edits your files itself; it hands you the block.
+Paste that into the project's CLAUDE.md once and the waste class dies permanently. Leakhound never edits your files itself. It hands you the block.
 
-The baseline line stays your sanity check: 2.4x your own median means this session was unusual, not your normal. A clean session gets a single green line instead.
+The baseline line stays your sanity check. 2.4x your own median means this session was unusual, not your normal. A clean session gets a single green line instead.
 
-### Command: `/leakhound:mcp-audit`
+### `/leakhound:mcp-audit`
 
 **What it does:** checks every configured MCP server (user, project, and plugin-bundled) against 30 days of actual usage across all your projects. Zero calls in 30 days gets a `DISABLE?` verdict plus the removal command.
 
 **Usage:** `/leakhound:mcp-audit`
 
-**Example run.** A typical setup that accumulated servers over a few months:
+**Example run.** A typical setup that accumulated servers over a few months.
 
 🟢 3 keep · 🔴 3 disable candidates
 
@@ -120,18 +120,18 @@ The baseline line stays your sanity check: 2.4x your own median means this sessi
 
 **What you'd do with that:**
 
-1. `postgres` was added for a project that shipped months ago: `claude mcp remove "postgres" -s user`
-2. `sentry` came bundled with a plugin you use for other things: disable just the server in `/plugin` settings, keep the plugin.
-3. `browserstack`, honestly forgotten: remove it, re-add in a minute if a project ever needs it again.
+1. `postgres` was added for a project that shipped months ago. Remove it with `claude mcp remove "postgres" -s user`
+2. `sentry` came bundled with a plugin you use for other things. Disable just the server in `/plugin` settings and keep the plugin.
+3. `browserstack`, honestly forgotten. Remove it, and re-add in a minute if a project ever needs it again.
 4. The three KEEP rows need nothing. That's the point of the green.
 
-### Command: `/leakhound:plugin-audit`
+### `/leakhound:plugin-audit`
 
 **What it does:** the same treatment for installed plugins. Component inventory (skills, commands, agents, hooks, bundled MCP servers), an always-on context estimate, and 30 days of real invocations. Verdicts are `KEEP`, `DISABLE?` with the per-session tokens you'd get back, or `HOOK-ONLY` for hook-carrying plugins whose usage can't be measured from transcripts. When leakhound can't measure something, it says so instead of guessing.
 
 **Usage:** `/leakhound:plugin-audit`
 
-**Example run:**
+**Example run.**
 
 🟢 2 keep · 🔴 2 disable candidates · 🟡 1 hook-only
 
@@ -147,23 +147,23 @@ Reclaimable every session: ~1,260 tokens (estimate).
 
 **What you'd do with that:**
 
-1. `docs-toolkit` and `theme-pack` haven't fired in a month and cost ~1,260 tokens of context every single session: disable both in `/plugin`. That's headroom back on every prompt from now on.
-2. `session-guard` is hook-only: its work never shows in transcripts, so leakhound refuses to call it dead. Keep it if you want its hook behavior; that's your call, not the audit's.
+1. `docs-toolkit` and `theme-pack` haven't fired in a month and cost ~1,260 tokens of context every single session. Disable both in `/plugin`. That's headroom back on every prompt from now on.
+2. `session-guard` is hook-only. Its work never shows in transcripts, so leakhound refuses to call it dead. Keep it if you want its hook behavior. That's your call, not the audit's.
 3. Run `/leakhound:trend` next week to watch the reclaimable number drop to zero.
 
-### Command: `/leakhound:model-audit [cost|balanced|quality]`
+### `/leakhound:model-audit [cost|balanced|quality]`
 
-**What it does:** answers one question: is a top-tier model doing haiku-grade work? Classifies 30 days of assistant messages by tool pattern and output size (an edit wrapped in heavy reasoning counts as complex, not mechanical), maps each model to a tier, and flags mismatches based on your preference:
+**What it does:** answers one question. Is a top-tier model doing haiku-grade work? It classifies 30 days of assistant messages by tool pattern and output size (an edit wrapped in heavy reasoning counts as complex, not mechanical), maps each model to a tier, and flags mismatches based on your preference.
 
 - `cost` flags top-tier models on mechanical and search work. Aggressive.
 - `balanced` flags top-tier on mechanical work only.
-- `quality` flips direction: it also flags cheap models doing complex work as a quality risk.
+- `quality` flips direction. It also flags cheap models doing complex work as a quality risk.
 
-Your choice persists, and the router uses the same weight. The audit also reports delegation compliance: of the times work went to a subagent, how often a cheaper model got the job.
+Your choice persists, and the router uses the same weight. The audit also reports delegation compliance. Of the times work went to a subagent, how often did a cheaper model get the job?
 
-**Usage:** `/leakhound:model-audit cost` (argument saves the preference; omit it to reuse the saved one)
+**Usage:** `/leakhound:model-audit cost` (argument saves the preference, omit it to reuse the saved one)
 
-**Example run** with weight `cost`:
+**Example run** with weight `cost`.
 
 ```diff
   claude-opus-4-8   top  ████████████████████  1,240,000 out  95,000 in  $31.00
@@ -185,23 +185,23 @@ Reallocatable: ~795,000 output tokens, roughly $19.90 at your configured prices.
 
 **What you'd do with that:**
 
-1. That 22% delegation number is the real finding: work is going to subagents, but they inherit the expensive model. Install the router (`/plugin install leakhound-router@leakhound`, then `/leakhound-router:router on`) so mechanical and search prompts carry a haiku directive automatically.
-2. For a session you know will be grunt work (renames, config edits, migrations), switch the whole session: `/model sonnet`.
+1. That 22% delegation number is the real finding. Work is going to subagents, but they inherit the expensive model. Install the router (`/plugin install leakhound-router@leakhound`, then `/leakhound-router:router on`) so mechanical and search prompts carry a haiku directive automatically.
+2. For a session you know will be grunt work (renames, config edits, migrations), switch the whole session with `/model sonnet`.
 3. Re-run the audit in a week. Delegation % up, reallocatable down = it's working. Flat = check `/leakhound:trend` and tighten `routerPatterns`.
 
-Prefer dollars over token counts, like the $ figures above? Add prices you maintain yourself to `~/.claude/leakhound.json`:
+Prefer dollars over token counts, like the $ figures above? Add prices you maintain yourself to `~/.claude/leakhound.json`.
 
 ```json
 { "prices": { "top": 25, "mid": 6, "cheap": 1 } }
 ```
 
-### Command: `/leakhound:trend`
+### `/leakhound:trend`
 
-**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`, /waste included, which logs findings, waste tokens, and compaction count per run; trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware: a falling waste metric renders green even though the delta is negative.
+**What it does:** shows whether the numbers are improving. Every audit run appends a summary line to `~/.claude/leakhound-history.jsonl`, /waste included, which logs findings, waste tokens, and compaction count per run. Trend renders deltas and sparklines over the last 12 runs. Rows are direction-aware, so a falling waste metric renders green even though the delta is negative.
 
 **Usage:** `/leakhound:trend`
 
-**Example run.** Two weeks after acting on the audits above:
+**Example run.** Two weeks after acting on the audits above.
 
 **waste** (8 runs)
 ```diff
@@ -228,28 +228,28 @@ Prefer dollars over token counts, like the $ figures above? Add prices you maint
 
 🟢 trending leaner
 
-**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect, and the report closes with an action line per worsened metric pointing at the command whose fresh run carries the fix (waste up: run /waste for its now/say/adopt lines; disables up: run the audit for the exact disable command).
+**What you'd do with that:** nothing. All green is the receipt that the disables and the router actually worked. If a row flips red later, whatever you installed or changed that week is the suspect, and the report closes with an action line per worsened metric pointing at the command whose fresh run carries the fix. Waste up, run /waste for its now/say/adopt lines. Disables up, run the audit for the exact disable command.
 
-### Command: `/leakhound-router:router [on|off|status]`
+### `/leakhound-router:router [on|off|status]`
 
-**What it does:** the automatic part, shipped as a separate plugin on purpose: audit-only installs never pay the hook's per-prompt cost. When on, a small hook classifies each prompt (mechanical, search, or complex) and injects a directive telling Claude to run cheap work through a haiku subagent, following your saved weight.
+**What it does:** the automatic part, shipped as a separate plugin on purpose so audit-only installs never pay the hook's per-prompt cost. When on, a small hook classifies each prompt (mechanical, search, or complex) and injects a directive telling Claude to run cheap work through a haiku subagent, following your saved weight.
 
-One thing it cannot do, worth knowing before you install: no hook can change the session model. That's a platform rule, not a leakhound choice. The router moves the execution work, which is where most of the burn actually is.
+Worth knowing before you install. No hook can change the session model. That's a platform rule, not a leakhound choice. The router moves the execution work, which is where most of the burn actually is.
 
 **Usage:** `/leakhound-router:router on`
 
-**Example run:**
+**Example run.**
 
 ```
 🟢 Router ON · weight cost
 mechanical ✅  search ✅  complex stays on session model
 ```
 
-✅ means prompts of that class get the cheap-subagent directive; anything else stays on your full-strength session model, and the matrix says so in words.
+✅ means prompts of that class get the cheap-subagent directive. Anything else stays on your full-strength session model, and the matrix says so in words.
 
-**What happens next:** you type "rename getUser to fetchUser everywhere". The hook classifies it mechanical and quietly tells Claude to do the renaming in a haiku subagent. Your expensive session model writes a couple of coordination lines instead of forty edit calls. You type "design the caching layer" and the hook stays silent, because that one deserves the big model. If a prompt gets misrouted, the directive includes an escape hatch: Claude escalates back to the session model rather than shipping a worse answer.
+**What happens next:** you type "rename getUser to fetchUser everywhere". The hook classifies it mechanical and quietly tells Claude to do the renaming in a haiku subagent. Your expensive session model writes a couple of coordination lines instead of forty edit calls. You type "design the caching layer" and the hook stays silent, because that one deserves the big model. If a prompt gets misrouted, the directive includes an escape hatch. Claude escalates back to the session model rather than shipping a worse answer.
 
-Tune classification with your own regex patterns (JSON needs double backslashes; anything in `never` wins):
+Tune classification with your own regex patterns. JSON needs double backslashes, and anything in `never` wins.
 
 ```json
 {
@@ -261,28 +261,28 @@ Tune classification with your own regex patterns (JSON needs double backslashes;
 }
 ```
 
-### Command: `/leakhound:live`
+### `/leakhound:live`
 
-**What it does:** sets up a live statusline so the context meter runs in your terminal all the time, not just when you audit:
+**What it does:** sets up a live statusline so the context meter runs in your terminal all the time, not just when you audit.
 
 ```
 🐕 ctx 764k↑ · +2.1k out
 ```
 
-Current context size (green, yellow, or red by pressure; red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
+Current context size (green, yellow, or red by pressure, where red warns "compaction near"), a direction arrow, and last-turn output tokens. It reads only the tail of the live transcript on each refresh, so it stays cheap.
 
-**Usage:** `/leakhound:live` walks you through it: copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet. You approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json`: `"live": {"yellow": 500000, "red": 800000}`.
+**Usage:** `/leakhound:live` walks you through it. It copies the statusline script to a stable path (the one file leakhound ever writes outside its config, done only through this command) and shows the settings.json snippet. You approve any settings edit. `/leakhound:live off` to remove. Thresholds tune in `~/.claude/leakhound.json` with `"live": {"yellow": 500000, "red": 800000}`.
 
-### Command: `/leakhound-guard:guard [on|off|status]`
+### `/leakhound-guard:guard [on|off|status]`
 
-**What it does:** the waste firewall, a separate opt-in plugin. Where `/waste` reports leaks after the fact, the guard referees Read calls before they cost anything:
+**What it does:** the waste firewall, a separate opt-in plugin. Where `/waste` reports leaks after the fact, the guard referees Read calls before they cost anything.
 
-- **artifacts**: a whole-file read of a lockfile or build artifact over ~20k est tokens is denied with a redirect: *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
-- **rereads**: a full re-read of a file unchanged since it was already read this session is denied, with a pointer back to the earlier read. A changed file always passes (mtime-checked).
+- **artifacts** denies a whole-file read of a lockfile or build artifact over ~20k est tokens and redirects you instead. *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
+- **rereads** denies a full re-read of a file unchanged since it was already read this session, and points you back to the earlier read. A changed file always passes (mtime-checked).
 
-Escape hatches are built in, no hard loops possible: offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten. Reads are only refereed, and every denial explains the cheaper alternative.
+Escape hatches are built in, so no hard loops are possible. Offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten. Reads are only refereed, and every denial explains the cheaper alternative.
 
-**Usage:** installed = on. `/leakhound-guard:guard status`, `off`, or per-rule: `artifacts off`, `rereads off`. State lives in `~/.claude/leakhound.json` under `guard`.
+**Usage:** installed = on. `/leakhound-guard:guard status`, `off`, or per-rule with `artifacts off` and `rereads off`. State lives in `~/.claude/leakhound.json` under `guard`.
 
 ```
 🛡 Guard ON · artifacts ✅ · rereads ✅
@@ -292,38 +292,38 @@ Escape hatches are built in, no hard loops possible: offset/limit reads always p
 
 Every screen uses the same small vocabulary. Once you can read one, you can read them all.
 
-**Chips** open most reports:
+**Chips** open most reports.
 
 | Chip | Means |
 |---|---|
-| 🟢 | healthy: KEEP verdicts, improving trend, router/guard active |
-| 🔴 | act on this: DISABLE? candidates, worsening trend, low delegation |
-| 🟡 | attention, not action: hook-only rows, context pressure building |
-| ⚪ | neutral: flat trend, something switched off |
+| 🟢 | healthy. KEEP verdicts, improving trend, router or guard active |
+| 🔴 | act on this. DISABLE? candidates, worsening trend, low delegation |
+| 🟡 | attention, not action. Hook-only rows, context pressure building |
+| ⚪ | neutral. Flat trend, something switched off |
 
-**Bars** like `████████░░░░░░░░░░░░` are 20 blocks scaled to the largest row in that table. They show proportion, not absolute size; the number next to the bar is the real value.
+**Bars** like `████████░░░░░░░░░░░░` are 20 blocks scaled to the largest row in that table. They show proportion, not absolute size. The number next to the bar is the real value.
 
 **Every token number is an estimate.** Text is counted as characters divided by four, which is why figures carry a `~`. Close enough to rank leaks and measure progress, not an invoice.
 
-**The statusline badge**, piece by piece. Take `🐕 ctx 839k↑ compaction near · +715 out`:
+**The statusline badge**, piece by piece. Take `🐕 ctx 839k↑ compaction near · +715 out`.
 
 | Piece | Means |
 |---|---|
-| `ctx 839k` | tokens the model processed on the last turn: your fresh input plus the whole cached conversation prefix plus cache writes. This is the weight of the session, and it can read far above the raw context window because cached tokens count every turn |
+| `ctx 839k` | tokens the model processed on the last turn, meaning your fresh input plus the whole cached conversation prefix plus cache writes. This is the weight of the session, and it can read far above the raw context window because cached tokens count every turn |
 | color | green is comfortable, yellow is heavy, red means compaction territory. Thresholds are yours to tune (`live` key below) |
-| `↑ ↓ →` | direction against the previous turn: growing, shrinking, flat |
+| `↑ ↓ →` | direction against the previous turn. Growing, shrinking, flat |
 | `compaction near` | the red-zone warning. Claude Code is close to squashing your history into a summary, after which files get re-read from scratch at full price. Finish the task, then `/clear` |
 | `+715 out` | tokens Claude generated on that turn. Output is the expensive direction, so this is the number your limits actually feel |
 
-**Audit columns.** In `/waste`, each red row is category, bar, estimated tokens lost, then what happened; the three-part fix below each row is `now` (do this), `say` (paste this at Claude), `adopt` (the habit). In `/mcp-audit` and `/plugin-audit`, the count column is real invocations in the last 30 days from your transcripts, `never` means zero, and the `~N tok` column on plugins is what their names and descriptions cost your context every single session, used or not.
+**Audit columns.** In `/waste`, each red row is category, bar, estimated tokens lost, then what happened. The three-part fix below each row is `now` (do this), `say` (paste this at Claude), `adopt` (the habit). In `/mcp-audit` and `/plugin-audit`, the count column is real invocations in the last 30 days from your transcripts, `never` means zero, and the `~N tok` column on plugins is what their names and descriptions cost your context every single session, used or not.
 
-**model-audit specifics.** `out` is tokens generated, the true spend proxy. `in` is input, mostly cache traffic, a secondary signal. The buckets line splits messages by what they did: mechanical edits, searching, prose, complex work. Delegation counts subagent launches and what share went to cheaper models; low percent means expensive models are doing the delegated grunt work too. Reallocatable is the output spent on flagged mismatches, the tokens a cheaper model could have produced.
+**model-audit specifics.** `out` is tokens generated, the true spend proxy. `in` is input, mostly cache traffic, a secondary signal. The buckets line splits messages by what they did. Mechanical edits, searching, prose, complex work. Delegation counts subagent launches and what share went to cheaper models. A low percent means expensive models are doing the delegated grunt work too. Reallocatable is the output spent on flagged mismatches, the tokens a cheaper model could have produced.
 
-**trend specifics.** Sparklines (`▁▃▅█`) plot up to the last 12 audit runs, scaled to their own min and max. Rows are direction-aware: for waste metrics, a falling number is good, so a negative delta renders green. The closing chip is the verdict: 🟢 trending leaner, 🔴 trending heavier, ⚪ flat.
+**trend specifics.** Sparklines (`▁▃▅█`) plot up to the last 12 audit runs, scaled to their own min and max. Rows are direction-aware. For waste metrics a falling number is good, so a negative delta renders green. The closing chip is the verdict. 🟢 trending leaner, 🔴 trending heavier, ⚪ flat.
 
 ## Configuration
 
-Settings live in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`):
+Settings live in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/leakhound.json`).
 
 | Key | Values | Default | Used by |
 |---|---|---|---|
@@ -334,15 +334,15 @@ Settings live in one file, `~/.claude/leakhound.json` (or `$CLAUDE_CONFIG_DIR/le
 | `live` | `{yellow, red}` context thresholds in tokens | 500k / 800k | statusline badge colors |
 | `guard` | `"off"` or `{artifacts, rereads}` booleans | on when installed | waste firewall rules |
 
-Two other local files exist: `~/.claude/leakhound-history.jsonl` (summary lines appended by /waste and the three audits; /trend reads them) and, when the guard is installed, per-session read memory under `~/.claude/.leakhound-guard/` (auto-pruned after a day).
+Two other local files exist. `~/.claude/leakhound-history.jsonl` holds the summary lines appended by /waste and the three audits, and /trend reads them. When the guard is installed, per-session read memory lives under `~/.claude/.leakhound-guard/` and is auto-pruned after a day.
 
 ## Privacy
 
-Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it: the whole thing is eight small plain-Node scripts, read them.
+Everything runs locally. No network calls, no telemetry, zero npm dependencies. Reports contain file paths, tool names, model names, and counts. Your transcript content never appears in any output. Don't take our word for it. The whole thing is eight small plain-Node scripts. Read them.
 
 ## How it works
 
-Eight zero-dependency Node scripts across three plugins. Four audits parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs; trend reads the history file the audits append to. The statusline script tails the live transcript for the meter. The router and guard hooks referee prompts and Read calls. Command markdown renders the JSON. You can run any of them directly:
+Eight zero-dependency Node scripts across three plugins. Four audits parse `~/.claude/projects/**/*.jsonl` (per-message token usage, tool calls, serving model) plus your MCP and plugin configs. Trend reads the history file the audits append to. The statusline script tails the live transcript for the meter. The router and guard hooks referee prompts and Read calls. Command markdown renders the JSON. You can run any of them directly.
 
 ```
 node scripts/waste.js --project-dir /path/to/project
@@ -357,13 +357,13 @@ Every script has a `--selftest` flag. CI runs all eight on ubuntu, macos, and wi
 ## FAQ
 
 **Why not just switch the model automatically?**
-Can't be done. No Claude Code hook can change the session model; we checked the hook output schema before building this. Leakhound does the three things that are possible: audits that tell you what to change, a router that moves execution work to cheaper subagents, and a guard that blocks wasteful reads outright.
+Can't be done. No Claude Code hook can change the session model, and we checked the hook output schema before building this. Leakhound does the three things that are possible. Audits that tell you what to change, a router that moves execution work to cheaper subagents, and a guard that blocks wasteful reads outright.
 
 **Will it tell me to disable something I actually use?**
 It's built to err toward KEEP. Fuzzy matching over-attributes usage rather than under, hook-only plugins get `HOOK-ONLY` instead of a false `DISABLE?`, and every verdict shows the raw counts so you can judge for yourself. The first false disable verdict found in testing was leakhound flagging its own router. That's fixed, and it's why the HOOK-ONLY verdict exists.
 
 **What does leakhound itself cost?**
-About 253 always-on tokens for the audit plugin, with zero hooks. The router adds one hook per prompt, the guard adds a quick check around each Read; both take a couple hundred milliseconds and both are separate installs precisely so you only pay for what you opted into.
+About 253 always-on tokens for the audit plugin, with zero hooks. The router adds one hook per prompt, and the guard adds a quick check around each Read. Both take a couple hundred milliseconds, and both are separate installs precisely so you only pay for what you opted into.
 
 ## License
 
