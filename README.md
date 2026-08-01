@@ -280,7 +280,7 @@ Current context size (green, yellow, or red by pressure, where red warns "compac
 - **artifacts** denies a whole-file read of a lockfile or build artifact over ~20k est tokens and redirects you instead. *"package-lock.json is a lockfile/build artifact (~176k est tokens). Grep it for the entry you need."* The 176k-token read never happens.
 - **rereads** denies a full re-read of a file unchanged since it was already read this session, and points you back to the earlier read. A changed file always passes (mtime-checked).
 
-Escape hatches are built in, so no hard loops are possible. Offset/limit reads always pass, and a third identical attempt always passes. Nothing is ever rewritten. Reads are only refereed, and every denial explains the cheaper alternative.
+Escape hatches are built in, so no hard loops are possible. A read carrying an offset or a limit always passes, under both rules, so the slice is always available. The reread denial additionally fires only once per file and then steps aside, since subagents inherit the parent's session id and may legitimately need a first read of a file the parent already saw. Artifact denials have no such counter, because the slice is always the right answer for a lockfile. Nothing is ever rewritten. Reads are only refereed, and every denial explains the cheaper alternative.
 
 **Usage:** installed = on. `/leakhound-guard:guard status`, `off`, or per-rule with `artifacts off` and `rereads off`. State lives in `~/.claude/leakhound.json` under `guard`.
 

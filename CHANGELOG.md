@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.6] — 2026-08-01
+
+### Fixed
+
+- Guard escape-hatch documentation was wrong for the artifacts rule. The README, and the leakhound-guard plugin description, both claimed "a third identical attempt always passes" as a blanket rule. That circuit breaker exists only on the rereads rule (one denial per file, then allow, so subagents inheriting the parent session id are never hard-blocked). Artifact denials have no counter and repeat forever by design, because offset/limit is the correct answer for a lockfile. Both now describe the per-rule behavior the code actually implements (leakhound-guard 0.8.2)
+- README FAQ no longer opens "Can't be done" on automatic model switching. The hook output schema genuinely has no model field, but external gateways that repoint ANTHROPIC_BASE_URL do swap models, for a whole session at startup. The answer now scopes the claim to hooks and names the alternative
+- README restructured for first-time visitors: the mcp-audit demo and the origin numbers sit above the fold, the redundant "Command:" prefix is gone from the eight command headings, and run-on prose was split
+
 ## [0.8.5] — 2026-07-26
 
 ### Fixed
